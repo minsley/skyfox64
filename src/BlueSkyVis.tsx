@@ -92,8 +92,55 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     const arwingRef = useRef<Arwing | null>(null);
     const controlsRef = useRef<ArwingControlHandler | null>(null);
     const [arwingMode] = useState<boolean>(true);
+    const wallCollidersRef = useRef<any[]>([]);
 
     const tunnelLength = 40;
+
+    const createWallColliders = (scene: Scene) => {
+        // Create invisible wall colliders for the tunnel boundaries
+        const wallThickness = 1;
+        const tunnelWidth = 15; // Total tunnel width (7.4 * 2 + some margin)
+        const tunnelHeight = 15; // Total tunnel height (7.4 * 2 + some margin)
+        const colliderLength = tunnelLength * 2; // Make colliders longer than tunnel
+        
+        // Right wall collider (wall 0)
+        const rightWall = MeshBuilder.CreateBox("rightWallCollider", {
+            width: wallThickness,
+            height: tunnelHeight,
+            depth: colliderLength
+        }, scene);
+        rightWall.position.set(8.5, 0, -colliderLength/2); // Position outside right wall
+        rightWall.isVisible = false; // Make invisible
+        
+        // Left wall collider (wall 1)
+        const leftWall = MeshBuilder.CreateBox("leftWallCollider", {
+            width: wallThickness,
+            height: tunnelHeight,
+            depth: colliderLength
+        }, scene);
+        leftWall.position.set(-8.5, 0, -colliderLength/2); // Position outside left wall
+        leftWall.isVisible = false;
+        
+        // Top wall collider (wall 2)
+        const topWall = MeshBuilder.CreateBox("topWallCollider", {
+            width: tunnelWidth,
+            height: wallThickness,
+            depth: colliderLength
+        }, scene);
+        topWall.position.set(0, 8.5, -colliderLength/2); // Position above top wall
+        topWall.isVisible = false;
+        
+        // Bottom wall collider (wall 3)
+        const bottomWall = MeshBuilder.CreateBox("bottomWallCollider", {
+            width: tunnelWidth,
+            height: wallThickness,
+            depth: colliderLength
+        }, scene);
+        bottomWall.position.set(0, -8.5, -colliderLength/2); // Position below bottom wall
+        bottomWall.isVisible = false;
+        
+        wallCollidersRef.current = [rightWall, leftWall, topWall, bottomWall];
+    };
 
     const setupScene = (scene: Scene) => {
         scene.clearColor = new Color4(0, 0, 0, 1);
@@ -301,6 +348,12 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             const controls = controlsRef.current.getControls();
             arwingRef.current.update(deltaTime, controls);
             arwingSpeedMultiplier = arwingRef.current.getSpeedMultiplier(controls);
+            
+            // Check wall collisions
+            if (arwingRef.current.checkWallCollisions(wallCollidersRef.current)) {
+                // Trigger stronger screen shake for wall collision
+                arwingRef.current.triggerShake(2.0);
+            }
         }
         
         // Calculate audio multiplier
@@ -333,6 +386,18 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
 
             if (message.special) {
                 (message.mesh as any).renderOrder = message.mesh.position.z + 10000;
+            }
+
+            // Check collision with Arwing if in Arwing mode (only for floating messages)
+            if (arwingMode && arwingRef.current && message.special) {
+                if (arwingRef.current.checkCollisionWithMesh(message.mesh)) {
+                    // Floating message collision - destroy it and trigger light screen shake
+                    arwingRef.current.triggerShake(1.0);
+                    message.mesh.dispose();
+                    texturePoolRef.current?.release(message.textureObj);
+                    messageObjectsRef.current.splice(i, 1);
+                    continue; // Skip the rest of the loop for this message
+                }
             }
 
             if (message.mesh.position.z > 10) {
@@ -371,6 +436,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         textWrapperRef.current = new TextWrapper();
 
         setupScene(sceneRef.current);
+        createWallColliders(sceneRef.current);
         
         // Initialize Arwing if in Arwing mode
         if (arwingMode) {

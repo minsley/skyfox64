@@ -1,7 +1,7 @@
 {
-  "name": "starhose64",
+  "name": "skyfox64",
   "version": "1.0.0",
-  "description": "Bluesky firehose visualization with integrated server",
+  "description": "StarFox-like Bluesky firehose visualization with integrated server",
   "main": "server.js",
   "type": "module",
   "scripts": {

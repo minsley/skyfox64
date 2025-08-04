@@ -298,6 +298,58 @@ export class Arwing {
         return speed;
     }
 
+    public checkCollisionWithMesh(mesh: any): boolean {
+        // Use Babylon.js built-in collision detection with the Arwing's bounding box
+        if (!this.mesh.getChildMeshes().length) {
+            // No loaded model yet, use a simple distance check
+            const distance = Vector3.Distance(this.mesh.position, mesh.position);
+            return distance < 3; // Approximate collision distance
+        }
+        
+        // Check collision with any of the Arwing's child meshes
+        for (const childMesh of this.mesh.getChildMeshes()) {
+            if (childMesh.intersectsMesh && childMesh.intersectsMesh(mesh, false)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    public checkWallCollisions(wallColliders: any[]): boolean {
+        // Check collision with invisible wall colliders
+        for (const wall of wallColliders) {
+            if (this.checkCollisionWithMesh(wall)) {
+                // Calculate push direction away from wall
+                const pushDirection = this.mesh.position.subtract(wall.position).normalize();
+                const pushForce = pushDirection.scale(0.3); // Gentle push away from wall
+                
+                // Apply push force to prevent getting stuck in walls
+                this.mesh.position.addInPlace(pushForce);
+                
+                return true; // Wall collision detected
+            }
+        }
+        return false;
+    }
+
+    public triggerShake(intensity: number = 1.0) {
+        // Add screen shake by applying random camera offset
+        const shakeAmount = intensity * 0.5;
+        const randomX = (Math.random() - 0.5) * shakeAmount;
+        const randomY = (Math.random() - 0.5) * shakeAmount;
+        
+        // Apply shake to camera position temporarily
+        this.camera.position.x += randomX;
+        this.camera.position.y += randomY;
+        
+        // Reset shake after a short delay
+        setTimeout(() => {
+            this.camera.position.x -= randomX;
+            this.camera.position.y -= randomY;
+        }, 50);
+    }
+
     public dispose() {
         // Clean up laser projectiles
         this.laserProjectiles.forEach(laser => {
