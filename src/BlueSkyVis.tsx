@@ -55,6 +55,13 @@ interface BlueSkyVizProps {
     discardFraction?: number;
 }
 
+interface ExplosionParticle {
+    mesh: any;
+    velocity: Vector3;
+    createdTime: number;
+    lifetime: number;
+}
+
 // Add styles to head
 const styleSheet = document.createElement('style');
 styleSheet.textContent = `
@@ -93,6 +100,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     const controlsRef = useRef<ArwingControlHandler | null>(null);
     const [arwingMode] = useState<boolean>(true);
     const wallCollidersRef = useRef<any[]>([]);
+    const explosionParticlesRef = useRef<ExplosionParticle[]>([]);
 
     const tunnelLength = 40;
 
@@ -347,6 +355,41 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         });
     };
 
+    const createExplosion = (position: Vector3) => {
+        if (!sceneRef.current) return;
+
+        // Create multiple explosion particles
+        const particleCount = 8;
+        for (let i = 0; i < particleCount; i++) {
+            const particle = MeshBuilder.CreateSphere("explosionParticle", {
+                diameter: 0.3
+            }, sceneRef.current);
+            
+            particle.position = position.clone();
+            
+            const particleMaterial = new StandardMaterial("explosionParticleMaterial", sceneRef.current);
+            particleMaterial.diffuseColor = new Color3(1, 0.5, 0); // Orange explosion color
+            particleMaterial.emissiveColor = new Color3(1, 0.2, 0);
+            particle.material = particleMaterial;
+
+            // Random velocity for each particle
+            const velocity = new Vector3(
+                (Math.random() - 0.5) * 10,
+                (Math.random() - 0.5) * 10,
+                (Math.random() - 0.5) * 10
+            );
+
+            const explosionParticle: ExplosionParticle = {
+                mesh: particle,
+                velocity,
+                createdTime: Date.now(),
+                lifetime: 1000 // 1 second lifetime
+            };
+            
+            explosionParticlesRef.current.push(explosionParticle);
+        }
+    };
+
     const updateScene = () => {
         if (!sceneRef.current || !engineRef.current || !cameraRef.current) return;
 
@@ -400,6 +443,32 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                 (message.mesh as any).renderOrder = message.mesh.position.z + 10000;
             }
 
+            // Check collision with laser projectiles (only for special messages)
+            if (arwingMode && arwingRef.current && message.special) {
+                const laserProjectiles = arwingRef.current.getLaserProjectiles();
+                let messageDestroyed = false;
+
+                for (let j = laserProjectiles.length - 1; j >= 0; j--) {
+                    const laser = laserProjectiles[j];
+                    const distance = Vector3.Distance(laser.mesh.position, message.mesh.position);
+                    
+                    if (distance < 2) { // Collision detected
+                        // Create explosion effect
+                        createExplosion(message.mesh.position);
+                        
+                        // Remove laser and message
+                        arwingRef.current.removeLaserProjectile(j);
+                        message.mesh.dispose();
+                        texturePoolRef.current?.release(message.textureObj);
+                        messageObjectsRef.current.splice(i, 1);
+                        messageDestroyed = true;
+                        break;
+                    }
+                }
+
+                if (messageDestroyed) continue;
+            }
+
             // Check collision with Arwing if in Arwing mode (only for floating messages)
             if (arwingMode && arwingRef.current && message.special) {
                 if (arwingRef.current.checkCollisionWithMesh(message.mesh)) {
@@ -432,6 +501,28 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                 texturePoolRef.current?.release(message.textureObj);
                 messageObjectsRef.current.splice(i, 1);
             }
+        }
+
+        // Update explosion particles
+        for (let i = explosionParticlesRef.current.length - 1; i >= 0; i--) {
+            const particle = explosionParticlesRef.current[i];
+            const elapsed = currentTime - particle.createdTime;
+            
+            if (elapsed > particle.lifetime) {
+                particle.mesh.dispose();
+                explosionParticlesRef.current.splice(i, 1);
+                continue;
+            }
+            
+            // Move particle and fade out over time
+            particle.mesh.position.addInPlace(particle.velocity.scale(deltaTime));
+            const fadeProgress = elapsed / particle.lifetime;
+            const material = particle.mesh.material as StandardMaterial;
+            material.alpha = 1 - fadeProgress;
+            
+            // Shrink particle over time
+            const scale = 1 - fadeProgress * 0.5;
+            particle.mesh.scaling.setAll(scale);
         }
 
         // Handle connecting message fade out
@@ -643,6 +734,12 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             if (ws) {
                 ws.close(1000, 'Component unmounting'); // Clean close
             }
+            // Clean up explosion particles
+            explosionParticlesRef.current.forEach(particle => {
+                particle.mesh.dispose();
+            });
+            explosionParticlesRef.current = [];
+            
             arwingRef.current?.dispose();
             controlsRef.current?.dispose();
             engineRef.current?.dispose();

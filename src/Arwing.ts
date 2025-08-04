@@ -382,6 +382,17 @@ export class Arwing {
         this.collectedUrls = [];
     }
 
+    public getLaserProjectiles(): LaserProjectile[] {
+        return this.laserProjectiles;
+    }
+
+    public removeLaserProjectile(index: number) {
+        if (index >= 0 && index < this.laserProjectiles.length) {
+            this.laserProjectiles[index].mesh.dispose();
+            this.laserProjectiles.splice(index, 1);
+        }
+    }
+
     public dispose() {
         // Clean up laser projectiles
         this.laserProjectiles.forEach(laser => {
