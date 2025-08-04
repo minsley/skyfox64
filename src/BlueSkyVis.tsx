@@ -266,7 +266,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         }
     };
 
-    const createMessage = (text: string) => {
+    const createMessage = (text: string, postData?: any) => {
         if (!sceneRef.current || !texturePoolRef.current || !textWrapperRef.current) return;
        
         let wall = Math.floor(Math.random() * (4 + 1* settingsRef.current.specialFrequency));
@@ -326,12 +326,24 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         const arbitraryOrder = Math.round(Math.random() * 1000);
         (plane as any).renderOrder = wall === -1 ? arbitraryOrder + 10000 : arbitraryOrder;
 
+        // Generate Bluesky URL if we have post data
+        let blueSkyUrl: string | undefined;
+        if (postData && postData.commit?.record?.text && wall === -1) {
+            // Extract DID and rkey from the post data to construct URL
+            const did = postData.did;
+            const rkey = postData.commit?.rkey;
+            if (did && rkey) {
+                blueSkyUrl = `https://bsky.app/profile/${did}/post/${rkey}`;
+            }
+        }
+
         messageObjectsRef.current.push({
             mesh: plane,
             textureObj,
             speed: wall === -1 ? 0.005 + 0.5 * (0.08 + Math.random() * 0.12) : 0.05 + Math.random() * 0.005,
             special: wall === -1,
-            arbitraryOrder
+            arbitraryOrder,
+            blueSkyUrl
         });
     };
 
@@ -393,6 +405,12 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                 if (arwingRef.current.checkCollisionWithMesh(message.mesh)) {
                     // Floating message collision - destroy it and trigger light screen shake
                     arwingRef.current.triggerShake(1.0);
+                    
+                    // Open Bluesky URL if available
+                    if (message.blueSkyUrl) {
+                        window.open(message.blueSkyUrl, '_self');
+                    }
+                    
                     message.mesh.dispose();
                     texturePoolRef.current?.release(message.textureObj);
                     messageObjectsRef.current.splice(i, 1);
@@ -543,7 +561,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                     lastMessageTime = Date.now(); // Update last message time
                     const data = JSON.parse(event.data);
                     if (data.commit?.record?.text) {
-                        createMessage(data.commit.record.text);
+                        createMessage(data.commit.record.text, data);
                     }
                 };
                 

@@ -17,6 +17,7 @@ export interface MessageObject {
     special: boolean;
     arbitraryOrder: number;
     createdAt?: number;
+    blueSkyUrl?: string;
 }
 
 export interface Settings {
