@@ -183,8 +183,8 @@ export class Arwing {
 
     private fireLasers() {
         // Create laser projectiles
-        const leftLaserPos = this.mesh.position.add(new Vector3(-5, 0, -1));
-        const rightLaserPos = this.mesh.position.add(new Vector3(5, 0, -1));
+        const leftLaserPos = this.mesh.position.add(new Vector3(-1.5, 0, -1));
+        const rightLaserPos = this.mesh.position.add(new Vector3(1.5, 0, -1));
 
         this.createLaserProjectile(leftLaserPos);
         this.createLaserProjectile(rightLaserPos);
