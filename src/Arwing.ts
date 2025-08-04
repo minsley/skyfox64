@@ -43,6 +43,7 @@ export class Arwing {
     private barrelRollDirection = 0;
     private lastFireTime = 0;
     private fireRate = 100; // ms between shots
+    private cameraOffset: Vector3 = new Vector3(0, 2, -10);
     private basePositionZ = -20; // Original Z position
     private targetPositionZ = -20; // Target Z position for smooth movement
     private positionLerpSpeed = 8; // How fast to lerp to target position
@@ -101,7 +102,7 @@ export class Arwing {
     }
 
     private setupCamera() {
-        this.camera = new UniversalCamera("arwingCamera", new Vector3(0, 2, -10), this.scene);
+        this.camera = new UniversalCamera("arwingCamera", this.cameraOffset.clone(), this.scene);
         // Don't parent to mesh - we'll manually position it
         this.camera.setTarget(new Vector3(0, 0, 10));
         this.camera.fov = 1.85;
@@ -278,15 +279,13 @@ export class Arwing {
 
     private updateCamera() {
         // Position camera relative to Arwing position but without rotation
-        // const offset = new Vector3(0, 2, 10); // Camera offset from Arwing
-        this.camera.position.set(this.mesh.position.x, this.mesh.position.y, this.camera.position.z);
+        this.camera.position.set(
+            this.cameraOffset.x + this.mesh.position.x,
+            this.cameraOffset.y + this.mesh.position.y,
+            this.cameraOffset.z);
 
         // Keep camera looking forward (no rotation inheritance)
         this.camera.setTarget(this.mesh.position.add(new Vector3(0, 0, -10)));
-    }
-
-    public getPosition(): Vector3 {
-        return this.mesh.position.clone();
     }
 
     public getSpeedMultiplier(controls: ArwingControls): number {
