@@ -430,14 +430,97 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             };
         }
 
-        // Connect WebSocket
-        const ws = new WebSocket(websocketUrl);
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.commit?.record?.text) {
-                createMessage(data.commit.record.text);
+        // WebSocket with reconnection logic
+        let ws: WebSocket | null = null;
+        let reconnectTimeout: NodeJS.Timeout | null = null;
+        let heartbeatInterval: NodeJS.Timeout | null = null;
+        let connectionCheckInterval: NodeJS.Timeout | null = null;
+        let reconnectAttempts = 0;
+        let shouldReconnect = true;
+        let lastMessageTime = Date.now();
+        const maxReconnectAttempts = 50; // More attempts
+        const baseReconnectDelay = 2000; // Start with 2 seconds
+        const connectionTimeout = 10000; // 10 seconds without messages = dead connection
+
+        const connectWebSocket = () => {
+            try {
+                ws = new WebSocket(websocketUrl);
+                
+                ws.onopen = () => {
+                    reconnectAttempts = 0; // Reset on successful connection
+                    lastMessageTime = Date.now();
+                    
+                    // Start heartbeat to detect connection issues
+                    heartbeatInterval = setInterval(() => {
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            try {
+                                ws.send('ping');
+                            } catch (error) {
+                                if (shouldReconnect) {
+                                    ws?.close();
+                                    scheduleReconnect();
+                                }
+                            }
+                        }
+                    }, 5000); // Ping every 5 seconds
+                    
+                    // Check if we're receiving messages regularly
+                    connectionCheckInterval = setInterval(() => {
+                        const timeSinceLastMessage = Date.now() - lastMessageTime;
+                        if (timeSinceLastMessage > connectionTimeout && ws && ws.readyState === WebSocket.OPEN) {
+                            ws.close();
+                        }
+                    }, 5000);
+                };
+                
+                ws.onmessage = (event) => {
+                    lastMessageTime = Date.now(); // Update last message time
+                    const data = JSON.parse(event.data);
+                    if (data.commit?.record?.text) {
+                        createMessage(data.commit.record.text);
+                    }
+                };
+                
+                ws.onclose = (event) => {
+                    if (heartbeatInterval) {
+                        clearInterval(heartbeatInterval);
+                        heartbeatInterval = null;
+                    }
+                    if (connectionCheckInterval) {
+                        clearInterval(connectionCheckInterval);
+                        connectionCheckInterval = null;
+                    }
+                    // Always attempt reconnection unless it's a clean shutdown
+                    if (shouldReconnect) {
+                        scheduleReconnect();
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    // Error will be handled by onclose event
+                };
+            } catch (error) {
+                scheduleReconnect();
             }
         };
+
+        const scheduleReconnect = () => {
+            if (!shouldReconnect || reconnectAttempts >= maxReconnectAttempts) {
+                return;
+            }
+            
+            const delay = Math.min(baseReconnectDelay + (reconnectAttempts * 1000), 10000); // Linear backoff, max 10s
+            
+            reconnectTimeout = setTimeout(() => {
+                if (shouldReconnect) {
+                    reconnectAttempts++;
+                    connectWebSocket();
+                }
+            }, delay);
+        };
+
+        // Initial connection
+        connectWebSocket();
 
         // Start render loop
         animationFrameRef.current = requestAnimationFrame(updateScene);
@@ -450,11 +533,23 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
 
         // Cleanup
         return () => {
+            shouldReconnect = false; // Disable reconnection
             window.removeEventListener('resize', handleResize);
             if (animationFrameRef.current) {
                 cancelAnimationFrame(animationFrameRef.current);
             }
-            ws.close();
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+            }
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+            }
+            if (connectionCheckInterval) {
+                clearInterval(connectionCheckInterval);
+            }
+            if (ws) {
+                ws.close(1000, 'Component unmounting'); // Clean close
+            }
             arwingRef.current?.dispose();
             controlsRef.current?.dispose();
             engineRef.current?.dispose();
