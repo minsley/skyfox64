@@ -48,6 +48,9 @@ export class Arwing {
     private targetPositionZ = -20; // Target Z position for smooth movement
     private positionLerpSpeed = 8; // How fast to lerp to target position
     private laserProjectiles: LaserProjectile[] = [];
+    private health = 3; // Maximum health
+    private maxHealth = 3;
+    private collectedUrls: string[] = []; // Store URLs from collisions
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -348,6 +351,35 @@ export class Arwing {
             this.camera.position.x -= randomX;
             this.camera.position.y -= randomY;
         }, 50);
+    }
+
+    public takeDamage(blueSkyUrl?: string): boolean {
+        if (blueSkyUrl) {
+            this.collectedUrls.push(blueSkyUrl);
+        }
+        
+        this.health--;
+        this.triggerShake(2.0); // Stronger shake for damage
+        
+        // Return true if Arwing is destroyed (health <= 0)
+        return this.health <= 0;
+    }
+
+    public getHealth(): number {
+        return this.health;
+    }
+
+    public getMaxHealth(): number {
+        return this.maxHealth;
+    }
+
+    public getLastCollectedUrl(): string | undefined {
+        return this.collectedUrls[this.collectedUrls.length - 1];
+    }
+
+    public resetHealth() {
+        this.health = this.maxHealth;
+        this.collectedUrls = [];
     }
 
     public dispose() {

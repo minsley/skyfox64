@@ -403,12 +403,21 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             // Check collision with Arwing if in Arwing mode (only for floating messages)
             if (arwingMode && arwingRef.current && message.special) {
                 if (arwingRef.current.checkCollisionWithMesh(message.mesh)) {
-                    // Floating message collision - destroy it and trigger light screen shake
-                    arwingRef.current.triggerShake(1.0);
+                    // Take damage and store URL
+                    const isDestroyed = arwingRef.current.takeDamage(message.blueSkyUrl);
                     
-                    // Open Bluesky URL if available
-                    if (message.blueSkyUrl) {
-                        window.open(message.blueSkyUrl, '_self');
+                    // Update health display
+                    setArwingHealth(arwingRef.current.getHealth());
+                    
+                    // If Arwing is destroyed (health <= 0), open the last collected URL
+                    if (isDestroyed) {
+                        const lastUrl = arwingRef.current.getLastCollectedUrl();
+                        if (lastUrl) {
+                            window.open(lastUrl, '_self');
+                        }
+                        // Reset health for next round
+                        arwingRef.current.resetHealth();
+                        setArwingHealth(arwingRef.current.getHealth());
                     }
                     
                     message.mesh.dispose();
@@ -644,6 +653,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     const [isMouseActive, setIsMouseActive] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [showMusic, setShowMusic] = useState(false);
+    const [arwingHealth, setArwingHealth] = useState(3);
     const [settings, setSettings] = useState<Settings>({
         discardFraction: discardFraction,
         baseSpeed: 1.0,
@@ -698,6 +708,49 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                 style={{ width: '100%', height: '100%' }}
                 id="renderCanvas"
             />
+            {/* Health indicator */}
+            <div style={{ 
+                position: 'absolute', 
+                top: '20px', 
+                left: '20px',
+                transition: 'opacity 0.3s ease-in-out',
+                opacity: isMouseActive || arwingHealth < 3 ? 1 : 0.3
+            }}>
+                <div style={{
+                    width: '150px',
+                    height: '20px',
+                    border: '2px solid #fff',
+                    borderRadius: '10px',
+                    background: 'linear-gradient(to right, #ff0000, #0000ff)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    boxShadow: '0 0 10px rgba(255, 255, 255, 0.3)'
+                }}>
+                    {/* Health fill overlay */}
+                    <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        background: 'linear-gradient(to right, #ff0000, #0000ff)',
+                        clipPath: `inset(0 ${100 - (arwingHealth / 3) * 100}% 0 0)`,
+                        transition: 'clip-path 0.3s ease-in-out',
+                        boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.3)'
+                    }} />
+                    {/* Empty overlay for depleted health */}
+                    <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        right: 0,
+                        width: `${100 - (arwingHealth / 3) * 100}%`,
+                        height: '100%',
+                        backgroundColor: '#333',
+                        transition: 'width 0.3s ease-in-out'
+                    }} />
+                </div>
+            </div>
+
             <div style={{ position: 'absolute', bottom: '20px', right: '20px', display: 'flex', gap: '10px' }}>
                 <div
                     className="control-button"
