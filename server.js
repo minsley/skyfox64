@@ -1,17 +1,21 @@
-const express = require('express');
-const { WebSocketServer } = require('ws');
-const WebSocket = require('ws');
-const path = require('path');
+import express from 'express';
+import { WebSocketServer } from 'ws';
+import WebSocket from 'ws';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Serve static files from the built React app
-app.use(express.static(path.join(__dirname, 'my-react-app/dist')));
+app.use(express.static(path.join(__dirname, 'dist')));
 
 // Fallback to index.html for SPA routing
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'my-react-app/dist/index.html'));
+  res.sendFile(path.join(__dirname, 'dist/index.html'));
 });
 
 // Start HTTP server
