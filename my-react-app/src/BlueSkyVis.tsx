@@ -91,7 +91,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     const connectingMessageRef = useRef<MessageObject | null>(null);
     const arwingRef = useRef<Arwing | null>(null);
     const controlsRef = useRef<ArwingControlHandler | null>(null);
-    const [arwingMode, setArwingMode] = useState<boolean>(true);
+    const [arwingMode] = useState<boolean>(true);
 
     const tunnelLength = 40;
 
@@ -525,33 +525,6 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                     style={{
                         opacity: isMouseActive ? .7 : 0,
                     }}
-                    onClick={() => {
-                        if (document.fullscreenElement) {
-                            document.exitFullscreen();
-                        } else {
-                            document.documentElement.requestFullscreen();
-                        }
-                    }}
-                >
-                    <svg
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="white"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
-                    </svg>
-                </div>
-                
-                <div
-                    className="control-button"
-                    style={{
-                        opacity: isMouseActive ? .7 : 0,
-                    }}
                     onClick={() => setShowSettings(true)}
                 >
                     <svg 
@@ -566,80 +539,6 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                     >
                         <circle cx="12" cy="12" r="3"></circle>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                    </svg>
-                </div>
-                <div
-                    className="control-button"
-                    style={{
-                        opacity: isMouseActive ? .7 : 0,
-                    }}
-                    onClick={() => {
-                        const win = window.open('https://bsky.app/profile/theo.io/post/3lb3uzxotxs2w', '_blank');
-                        win?.focus();
-                    }}
-                >
-                    <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        width="24" 
-                        height="24" 
-                        viewBox="0 0 48 48" 
-                        className="inline-block"
-                    >
-                        <g fill="none" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4">
-                            <path fill="white" d="M5 12c3.664-4.294 14.081 6.82 19 13c4.92-6.18 15.337-17.294 19-13c.679.65 1.443 2.877-1 6c-.678.976-1.814 3.706-1 8c0 1.139-1.115 2.952-6 1c2.375 1.627 6.85 6.096 4 10c-2.714 3.416-9.035 7.457-13-2l-2-4l-2 4c-3.964 9.457-10.286 5.416-13 2c-2.85-3.904 1.626-8.373 4-10c-4.885 1.952-6 .139-6-1c.814-4.294-.321-7.024-1-8c-2.442-3.123-1.678-5.35-1-6"></path>
-                            <path d="M24.032 23C23.534 17.864 28.913 7 33 7"></path>
-                            <path d="M23.968 23C24.466 17.864 19.087 7 15 7"></path>
-                        </g>
-                    </svg>
-                </div>
-                <a
-                    className="control-button"
-                    style={{
-                        opacity: isMouseActive ? .7 : 0,
-                    }}
-                    href="https://fly-the-firehose.theo.io"
-                >
-                    <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        width="24" 
-                        height="24" 
-                        viewBox="0 0 24 24" 
-                        fill="none" 
-                        stroke="white" 
-                        strokeWidth="2" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round"
-                    >
-                        <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"></path>
-                        <path d="M12 14l-1.5 4.5L6 18l4.5-1.5L12 22l1.5-4.5L18 18l-4.5-1.5L12 14z"></path>
-                    </svg>
-                </a>
-                <div
-                    className="control-button"
-                    style={{
-                        opacity: isMouseActive ? .7 : 0,
-                        backgroundColor: arwingMode ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 255, 0, 0.5)',
-                    }}
-                    onClick={() => {
-                        setArwingMode(!arwingMode);
-                        // Will reinitialize on next render
-                        window.location.reload();
-                    }}
-                    title="Toggle Static Camera Mode"
-                >
-                    <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        width="24" 
-                        height="24" 
-                        viewBox="0 0 24 24" 
-                        fill="none" 
-                        stroke="white" 
-                        strokeWidth="2" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round"
-                    >
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                        <circle cx="12" cy="13" r="4"></circle>
                     </svg>
                 </div>
             </div>
