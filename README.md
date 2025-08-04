@@ -39,13 +39,6 @@ npm start
 
 4. Open http://localhost:3000
 
-## Development
-
-For frontend development with hot reload:
-```bash
-npm run dev
-```
-
 ## How it works
 
 - React + TypeScript frontend with Vite build system
