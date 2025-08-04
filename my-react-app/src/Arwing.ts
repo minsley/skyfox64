@@ -24,6 +24,13 @@ export interface ArwingControls {
     barrelRollRight: boolean;
 }
 
+interface LaserProjectile {
+    mesh: any;
+    velocity: Vector3;
+    createdTime: number;
+    lifetime: number;
+}
+
 export class Arwing {
     public mesh: TransformNode;
     public camera!: UniversalCamera;
@@ -39,6 +46,7 @@ export class Arwing {
     private basePositionZ = -20; // Original Z position
     private targetPositionZ = -20; // Target Z position for smooth movement
     private positionLerpSpeed = 8; // How fast to lerp to target position
+    private laserProjectiles: LaserProjectile[] = [];
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -107,6 +115,7 @@ export class Arwing {
         this.handleCombat(controls);
         this.updatePosition(deltaTime);
         this.updateCamera();
+        this.updateLasers(deltaTime);
     }
 
     private handleMovement(_deltaTime: number, controls: ArwingControls) {
@@ -182,9 +191,9 @@ export class Arwing {
     }
 
     private fireLasers() {
-        // Create laser projectiles
-        const leftLaserPos = this.mesh.position.add(new Vector3(-1.5, 0, -1));
-        const rightLaserPos = this.mesh.position.add(new Vector3(1.5, 0, -1));
+        // Create laser projectiles in front of the Arwing
+        const leftLaserPos = this.mesh.position.add(new Vector3(-1.5, 0, -2));
+        const rightLaserPos = this.mesh.position.add(new Vector3(1.5, 0, -2));
 
         this.createLaserProjectile(leftLaserPos);
         this.createLaserProjectile(rightLaserPos);
@@ -202,24 +211,34 @@ export class Arwing {
         laserMaterial.emissiveColor = new Color3(0, 0.5, 0);
         laser.material = laserMaterial;
 
-        // Animate laser forward
-        const laserSpeed = 200;
-        const laserLifetime = 2; // seconds
-        
-        let elapsedTime = 0;
-        const laserAnimation = () => {
-            elapsedTime += this.scene.getEngine().getDeltaTime() / 1000;
-            
-            if (elapsedTime >= laserLifetime) {
-                laser.dispose();
-                this.scene.unregisterBeforeRender(laserAnimation);
-                return;
-            }
-            
-            laser.position.z += laserSpeed * this.scene.getEngine().getDeltaTime() / 1000;
+        // Create laser projectile object and add to array
+        const laserProjectile: LaserProjectile = {
+            mesh: laser,
+            velocity: new Vector3(0, 0, -20), // Forward velocity
+            createdTime: Date.now(),
+            lifetime: 2000 // 2 seconds in milliseconds
         };
         
-        this.scene.registerBeforeRender(laserAnimation);
+        this.laserProjectiles.push(laserProjectile);
+    }
+
+    private updateLasers(deltaTime: number) {
+        const currentTime = Date.now();
+        
+        // Update and clean up laser projectiles
+        for (let i = this.laserProjectiles.length - 1; i >= 0; i--) {
+            const laser = this.laserProjectiles[i];
+            
+            // Check if laser has expired
+            if (currentTime - laser.createdTime > laser.lifetime) {
+                laser.mesh.dispose();
+                this.laserProjectiles.splice(i, 1);
+                continue;
+            }
+            
+            // Move laser forward
+            laser.mesh.position.addInPlace(laser.velocity.scale(deltaTime));
+        }
     }
 
     private updatePosition(deltaTime: number) {
@@ -269,6 +288,12 @@ export class Arwing {
     }
 
     public dispose() {
+        // Clean up laser projectiles
+        this.laserProjectiles.forEach(laser => {
+            laser.mesh.dispose();
+        });
+        this.laserProjectiles = [];
+        
         this.mesh.dispose();
         this.camera.dispose();
     }
