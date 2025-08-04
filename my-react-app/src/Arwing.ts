@@ -94,13 +94,9 @@ export class Arwing {
 
     private setupCamera() {
         this.camera = new UniversalCamera("arwingCamera", new Vector3(0, 2, -10), this.scene);
-        this.camera.parent = this.mesh;
-        this.camera.setTarget(Vector3.Zero());
-        // this.camera.rotation.y = Math.PI;
-        // this.camera.rotation.x = 0.15;
+        // Don't parent to mesh - we'll manually position it
+        this.camera.setTarget(new Vector3(0, 0, 10));
         this.camera.fov = 1.85;
-        // this.camera.position.z = 8;
-        // this.camera.position.y = 1;
         this.camera.maxZ = 50;
         this.camera.minZ = -50;
     }
@@ -110,6 +106,7 @@ export class Arwing {
         this.handleBarrelRoll(deltaTime, controls);
         this.handleCombat(controls);
         this.updatePosition(deltaTime);
+        this.updateCamera();
     }
 
     private handleMovement(_deltaTime: number, controls: ArwingControls) {
@@ -117,9 +114,9 @@ export class Arwing {
 
         // Handle boost/brake position changes for visual effect
         if (controls.boost) {
-            this.targetPositionZ = this.basePositionZ + 3; // Move forward when boosting
+            this.targetPositionZ = this.basePositionZ - 3; // Move forward when boosting
         } else if (controls.brake) {
-            this.targetPositionZ = this.basePositionZ - 2; // Move backward when braking
+            this.targetPositionZ = this.basePositionZ + 1; // Move backward when braking
         } else {
             this.targetPositionZ = this.basePositionZ; // Return to original position
         }
@@ -246,8 +243,15 @@ export class Arwing {
 
         // Apply velocity
         this.mesh.position.addInPlace(this.velocity.scale(deltaTime));
+    }
 
-        console.log(this.mesh.position);
+    private updateCamera() {
+        // Position camera relative to Arwing position but without rotation
+        // const offset = new Vector3(0, 2, 10); // Camera offset from Arwing
+        this.camera.position.set(this.mesh.position.x, this.mesh.position.y, this.camera.position.z);
+
+        // Keep camera looking forward (no rotation inheritance)
+        this.camera.setTarget(this.mesh.position.add(new Vector3(0, 0, -10)));
     }
 
     public getPosition(): Vector3 {
