@@ -1,0 +1,19 @@
+{
+  "name": "starhose64",
+  "version": "1.0.0",
+  "description": "Bluesky firehose visualization with integrated server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "cd my-react-app && npm run build",
+    "dev": "cd my-react-app && npm run dev",
+    "install-deps": "npm install && cd my-react-app && npm install"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}

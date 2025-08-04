@@ -68,7 +68,7 @@ styleSheet.textContent = `
 document.head.appendChild(styleSheet);
 
 const BlueSkyViz: React.FC<BlueSkyVizProps> = ({ 
-    websocketUrl = 'wss://bsky-relay.c.theo.io/subscribe?wantedCollections=app.bsky.feed.post',
+    websocketUrl = `ws${window.location.protocol === 'https:' ? 's' : ''}://${window.location.host}`,
     discardFraction = new URLSearchParams(window.location.search).get('discardFrac') ? 
         parseFloat(new URLSearchParams(window.location.search).get('discardFrac')!) : 
         (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 0.5 : 0)
