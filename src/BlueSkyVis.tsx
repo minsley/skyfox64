@@ -481,7 +481,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                     }
                 };
                 
-                ws.onclose = (event) => {
+                ws.onclose = () => {
                     if (heartbeatInterval) {
                         clearInterval(heartbeatInterval);
                         heartbeatInterval = null;
@@ -496,7 +496,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                     }
                 };
                 
-                ws.onerror = (error) => {
+                ws.onerror = () => {
                     // Error will be handled by onclose event
                 };
             } catch (error) {
