@@ -1,9 +1,0 @@
-{
-    "redirects": [
-      {
-        "source": "/babylonjs.html",
-        "destination": "/index.html",
-        "permanent": true
-      }
-    ]
-  }
