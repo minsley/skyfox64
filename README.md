@@ -1,12 +1,28 @@
-# Starhose64
+# SkyFox64
 
-The Bluesky firehose viewed in the style of a Windows 95 screensaver
+StarFox64 inspired visualization of the Bluesky firehose. Pilot an Arwing and shoot at posts.
+
+**Live Demo**: https://star-hose-64.onrender.com
+
+## Features
+
+- Fly an Arwing through a tunnel of realtime Bluesky posts
+- Do a barrel roll, use the boost, you know the drill
+- Built with Babylon.js
+
+## Controls
+
+- **WASD**: Move Arwing (W/S: up/down, A/D: left/right)
+- **Shift**: Boost
+- **Ctrl**: Brake
+- **Space** or **Left Click**: Fire lasers
+- **AA/DD**: Barrel roll (double-tap A or D)
 
 ## Quick Start
 
 1. Install dependencies:
 ```bash
-npm run install-deps
+npm install
 ```
 
 2. Build the React app:
@@ -30,13 +46,20 @@ npm run dev
 
 ## How it works
 
+- React + TypeScript frontend with Vite build system
 - Single Node.js server serves static files and acts as WebSocket relay
 - Connects to Bluesky's Jetstream API and forwards messages to frontend clients
-- 3D visualization using Babylon.js renders posts as floating objects in space
-- Health check available at `/health`
+- 3D visualization using Babylon.js with imported Arwing 3D model
+- Interactive flight controls and laser shooting mechanics
 
 ## Deployment
 
-Deploy to any Node.js hosting platform (Vercel, Railway, Fly.io, etc.):
+Deploy to any Node.js hosting platform:
 - Set `NODE_ENV=production`
 - Run `npm run build && npm start`
+
+## Credits
+
+- Forked from theosanderson's firehose on [github](https://github.com/theosanderson/firehose/)
+- Arwing model by spencer.psi0918 on [SKetchFab](https://skfb.ly/opNnG)
+
