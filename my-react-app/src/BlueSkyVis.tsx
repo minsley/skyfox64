@@ -12,6 +12,8 @@ import {
 } from '@babylonjs/core';
 import { TexturePool } from './TexturePool';
 import { MessageObject, TextureUpdateResult, Settings } from './types';
+import { Arwing } from './Arwing';
+import { ArwingControlHandler } from './ArwingControls';
 
 const fontSize = 32;
 const lineHeight = fontSize * 1.1;
@@ -85,6 +87,9 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     const textWrapperRef = useRef<TextWrapper | null>(null);
     const animationFrameRef = useRef<number>();
     const connectingMessageRef = useRef<MessageObject | null>(null);
+    const arwingRef = useRef<Arwing | null>(null);
+    const controlsRef = useRef<ArwingControlHandler | null>(null);
+    const [arwingMode, setArwingMode] = useState<boolean>(false);
 
     const tunnelLength = 40;
 
@@ -106,6 +111,10 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     };
 
     const setupCamera = (scene: Scene) => {
+        if (arwingMode && arwingRef.current) {
+            return arwingRef.current.camera;
+        }
+        
         const camera = new UniversalCamera("camera", new Vector3(0, 0, 0), scene);
         camera.rotation.y = Math.PI;
         camera.rotation.x = 0.15;
@@ -275,6 +284,12 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         const deltaTime = (currentTime - lastFrameTimeRef.current) / 1000;
         lastFrameTimeRef.current = currentTime;
 
+        // Update Arwing if in Arwing mode
+        if (arwingMode && arwingRef.current && controlsRef.current) {
+            const controls = controlsRef.current.getControls();
+            arwingRef.current.update(deltaTime, controls);
+        }
+        
         // Calculate audio multiplier
         let audioMultiplier = 1.0;
         if (settingsRef.current.audioEnabled && analyserRef.current && audioDataRef.current) {
@@ -341,6 +356,14 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         textWrapperRef.current = new TextWrapper();
 
         setupScene(sceneRef.current);
+        
+        // Initialize Arwing if in Arwing mode
+        if (arwingMode) {
+            arwingRef.current = new Arwing(sceneRef.current);
+            controlsRef.current = new ArwingControlHandler();
+            sceneRef.current.activeCamera = arwingRef.current.camera;
+        }
+        
         cameraRef.current = setupCamera(sceneRef.current);
         texturePoolRef.current = new TexturePool(sceneRef.current, lineHeight);
 
@@ -417,10 +440,12 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                 cancelAnimationFrame(animationFrameRef.current);
             }
             ws.close();
+            arwingRef.current?.dispose();
+            controlsRef.current?.dispose();
             engineRef.current?.dispose();
             texturePoolRef.current?.cleanup();
         };
-    }, [websocketUrl]);
+    }, [websocketUrl, arwingMode]);
 
     const [isMouseActive, setIsMouseActive] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
@@ -574,6 +599,35 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                         <path d="M12 14l-1.5 4.5L6 18l4.5-1.5L12 22l1.5-4.5L18 18l-4.5-1.5L12 14z"></path>
                     </svg>
                 </a>
+                <div
+                    className="control-button"
+                    style={{
+                        opacity: isMouseActive ? .7 : 0,
+                        backgroundColor: arwingMode ? 'rgba(0, 255, 0, 0.5)' : 'rgba(0, 0, 0, 0.5)',
+                    }}
+                    onClick={() => {
+                        setArwingMode(!arwingMode);
+                        // Will reinitialize on next render
+                        window.location.reload();
+                    }}
+                    title="Toggle Arwing Mode"
+                >
+                    <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        width="24" 
+                        height="24" 
+                        viewBox="0 0 24 24" 
+                        fill="none" 
+                        stroke="white" 
+                        strokeWidth="2" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round"
+                    >
+                        <path d="M12 2l-2 7h4l-2-7z"></path>
+                        <path d="M12 17l-8-5 16 0-8 5z"></path>
+                        <path d="M2 12l8-5M22 12l-8-5"></path>
+                    </svg>
+                </div>
             </div>
             {true && (
                 <div style={{
