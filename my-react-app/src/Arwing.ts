@@ -36,12 +36,15 @@ export class Arwing {
     private barrelRollDirection = 0;
     private lastFireTime = 0;
     private fireRate = 100; // ms between shots
+    private basePositionZ = -20; // Original Z position
+    private targetPositionZ = -20; // Target Z position for smooth movement
+    private positionLerpSpeed = 8; // How fast to lerp to target position
 
     constructor(scene: Scene) {
         this.scene = scene;
         this.mesh = new TransformNode("arwing", scene);
         this.setupCamera();
-        this.mesh.position = new Vector3(0, 0, -20);
+        this.mesh.position = new Vector3(0, 0, this.basePositionZ);
         // Load model asynchronously
         this.loadArwingModel();
     }
@@ -112,8 +115,14 @@ export class Arwing {
     private handleMovement(_deltaTime: number, controls: ArwingControls) {
         if (this.isBarrelRolling) return;
 
-        // No actual movement - Arwing stays stationary
-        // Only handle banking and orientation for visual feedback
+        // Handle boost/brake position changes for visual effect
+        if (controls.boost) {
+            this.targetPositionZ = this.basePositionZ + 3; // Move forward when boosting
+        } else if (controls.brake) {
+            this.targetPositionZ = this.basePositionZ - 2; // Move backward when braking
+        } else {
+            this.targetPositionZ = this.basePositionZ; // Return to original position
+        }
         
         // Lateral input for banking
         let lateralInput = 0;
@@ -129,7 +138,7 @@ export class Arwing {
         this.angularVelocity.z = -lateralInput * this.turnSpeed;
         this.angularVelocity.x = verticalInput * this.turnSpeed * 0.5;
         
-        // Clear velocity - Arwing doesn't actually move
+        // Clear velocity - Arwing doesn't actually move in world space
         this.velocity = Vector3.Zero();
     }
 
@@ -229,7 +238,12 @@ export class Arwing {
             this.mesh.rotation.x *= 0.95;
         }
 
-        // Apply velocity
+        // Smoothly lerp Z position for boost/brake visual effect
+        const currentZ = this.mesh.position.z;
+        const newZ = currentZ + (this.targetPositionZ - currentZ) * this.positionLerpSpeed * deltaTime;
+        this.mesh.position.z = newZ;
+
+        // Apply velocity (still zero, but keeping for consistency)
         this.mesh.position.addInPlace(this.velocity.scale(deltaTime));
     }
 
