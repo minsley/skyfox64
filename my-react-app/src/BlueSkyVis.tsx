@@ -296,9 +296,11 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         lastFrameTimeRef.current = currentTime;
 
         // Update Arwing if in Arwing mode
+        let arwingSpeedMultiplier = 1.0;
         if (arwingMode && arwingRef.current && controlsRef.current) {
             const controls = controlsRef.current.getControls();
             arwingRef.current.update(deltaTime, controls);
+            arwingSpeedMultiplier = arwingRef.current.getSpeedMultiplier(controls);
         }
         
         // Calculate audio multiplier
@@ -312,19 +314,21 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             audioMultiplier = 0.1 + (avg / 255) * 2.9;
         }
 
-        // Update camera
-        cameraRotationRef.current += deltaTime * 0.015 * camDirRef.current;
-        if (cameraRotationRef.current > 0.13 * Math.PI/2) {
-            camDirRef.current = -1;
-        } else if (cameraRotationRef.current < 0.13 * -Math.PI/2) {
-            camDirRef.current = 1;
+        // Update camera (only in static camera mode)
+        if (!arwingMode) {
+            cameraRotationRef.current += deltaTime * 0.015 * camDirRef.current;
+            if (cameraRotationRef.current > 0.13 * Math.PI/2) {
+                camDirRef.current = -1;
+            } else if (cameraRotationRef.current < 0.13 * -Math.PI/2) {
+                camDirRef.current = 1;
+            }
+            cameraRef.current.rotation.z = cameraRotationRef.current;
         }
-        cameraRef.current.rotation.z = cameraRotationRef.current;
 
         // Update messages
         for (let i = messageObjectsRef.current.length - 1; i >= 0; i--) {
             const message = messageObjectsRef.current[i];
-            message.mesh.position.z += 100 * message.speed * settingsRef.current.baseSpeed * audioMultiplier * deltaTime;
+            message.mesh.position.z += 100 * message.speed * settingsRef.current.baseSpeed * audioMultiplier * arwingSpeedMultiplier * deltaTime;
             (message.mesh as any).renderOrder = message.arbitraryOrder;
 
             if (message.special) {

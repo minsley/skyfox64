@@ -30,9 +30,6 @@ export class Arwing {
     private scene: Scene;
     private velocity: Vector3 = Vector3.Zero();
     private angularVelocity: Vector3 = Vector3.Zero();
-    private baseSpeed = 0.1;
-    private boostSpeed = -0.1;
-    private brakeSpeed = 0.2;
     private turnSpeed = 2;
     private isBarrelRolling = false;
     private barrelRollTime = 0;
@@ -115,30 +112,25 @@ export class Arwing {
     private handleMovement(_deltaTime: number, controls: ArwingControls) {
         if (this.isBarrelRolling) return;
 
-        let currentSpeed = this.baseSpeed;
-        if (controls.boost) currentSpeed = this.boostSpeed;
-        if (controls.brake) currentSpeed = this.brakeSpeed;
-
-        // Constant forward movement
-        this.velocity.z = currentSpeed;
-
-        // Lateral movement
+        // No actual movement - Arwing stays stationary
+        // Only handle banking and orientation for visual feedback
+        
+        // Lateral input for banking
         let lateralInput = 0;
-        if (controls.left) lateralInput += 1;
-        if (controls.right) lateralInput -= 1;
+        if (controls.left) lateralInput -= 1;
+        if (controls.right) lateralInput += 1;
 
-        // Vertical movement
+        // Vertical input for pitching
         let verticalInput = 0;
         if (controls.up) verticalInput -= 1;
         if (controls.down) verticalInput += 1;
 
-        // Apply movement with banking
-        this.velocity.x = lateralInput * currentSpeed * 0.5;
-        this.velocity.y = verticalInput * currentSpeed * 0.5;
-
-        // Banking when turning
+        // Banking when turning (visual feedback only)
         this.angularVelocity.z = -lateralInput * this.turnSpeed;
         this.angularVelocity.x = verticalInput * this.turnSpeed * 0.5;
+        
+        // Clear velocity - Arwing doesn't actually move
+        this.velocity = Vector3.Zero();
     }
 
     private handleBarrelRoll(deltaTime: number, controls: ArwingControls) {
@@ -243,6 +235,16 @@ export class Arwing {
 
     public getPosition(): Vector3 {
         return this.mesh.position.clone();
+    }
+
+    public getSpeedMultiplier(controls: ArwingControls): number {
+        // Return speed multiplier for messages based on Arwing controls
+        let speed = 1.0; // Base speed
+        
+        if (controls.boost) speed = 2.0;  // Boost makes messages come faster
+        if (controls.brake) speed = 0.3;  // Brake makes messages come slower
+        
+        return speed;
     }
 
     public dispose() {
