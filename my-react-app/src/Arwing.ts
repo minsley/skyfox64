@@ -134,12 +134,13 @@ export class Arwing {
         if (controls.up) verticalInput -= 1;
         if (controls.down) verticalInput += 1;
 
-        // Banking when turning (visual feedback only)
+        // Add in-plane velocity
+        this.velocity.x = -lateralInput * this.turnSpeed * 3;
+        this.velocity.y = -verticalInput * this.turnSpeed * 3;
+
+        // Banking when turning
         this.angularVelocity.z = -lateralInput * this.turnSpeed;
-        this.angularVelocity.x = verticalInput * this.turnSpeed * 0.5;
-        
-        // Clear velocity - Arwing doesn't actually move in world space
-        this.velocity = Vector3.Zero();
+        this.angularVelocity.x = verticalInput * this.turnSpeed;
     }
 
     private handleBarrelRoll(deltaTime: number, controls: ArwingControls) {
@@ -243,8 +244,10 @@ export class Arwing {
         const newZ = currentZ + (this.targetPositionZ - currentZ) * this.positionLerpSpeed * deltaTime;
         this.mesh.position.z = newZ;
 
-        // Apply velocity (still zero, but keeping for consistency)
+        // Apply velocity
         this.mesh.position.addInPlace(this.velocity.scale(deltaTime));
+
+        console.log(this.mesh.position);
     }
 
     public getPosition(): Vector3 {
