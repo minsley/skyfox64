@@ -119,7 +119,7 @@ export class Arwing {
     }
 
     private handleMovement(_deltaTime: number, controls: ArwingControls) {
-        if (this.isBarrelRolling) return;
+        // if (this.isBarrelRolling) return;
 
         // Handle boost/brake position changes for visual effect
         if (controls.boost) {
@@ -143,10 +143,15 @@ export class Arwing {
         // Add in-plane velocity
         this.velocity.x = -lateralInput * this.turnSpeed * 5;
         this.velocity.y = -verticalInput * this.turnSpeed * 5;
+        if(this.isBarrelRolling) {
+            this.velocity.x += this.barrelRollDirection * 5;
+        }
 
-        // Banking when turning
-        this.angularVelocity.z = -lateralInput * this.turnSpeed;
-        this.angularVelocity.x = verticalInput * this.turnSpeed;
+        if(!this.isBarrelRolling) {
+            // Banking when turning
+            this.angularVelocity.z = -lateralInput * this.turnSpeed;
+            this.angularVelocity.x = verticalInput * this.turnSpeed;
+        }
     }
 
     private handleBarrelRoll(deltaTime: number, controls: ArwingControls) {
