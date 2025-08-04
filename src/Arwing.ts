@@ -48,6 +48,9 @@ export class Arwing {
     private targetPositionZ = -20; // Target Z position for smooth movement
     private positionLerpSpeed = 8; // How fast to lerp to target position
     private laserProjectiles: LaserProjectile[] = [];
+    private health = 3; // Maximum health
+    private maxHealth = 3;
+    private collectedUrls: string[] = []; // Store URLs from collisions
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -296,6 +299,98 @@ export class Arwing {
         if (controls.brake) speed = 0.3;  // Brake makes messages come slower
         
         return speed;
+    }
+
+    public checkCollisionWithMesh(mesh: any): boolean {
+        // Use Babylon.js built-in collision detection with the Arwing's bounding box
+        if (!this.mesh.getChildMeshes().length) {
+            // No loaded model yet, use a simple distance check
+            const distance = Vector3.Distance(this.mesh.position, mesh.position);
+            return distance < 3; // Approximate collision distance
+        }
+        
+        // Check collision with any of the Arwing's child meshes
+        for (const childMesh of this.mesh.getChildMeshes()) {
+            if (childMesh.intersectsMesh && childMesh.intersectsMesh(mesh, false)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    public checkWallCollisions(wallColliders: any[]): boolean {
+        // Check collision with invisible wall colliders
+        for (const wall of wallColliders) {
+            if (this.checkCollisionWithMesh(wall)) {
+                // Calculate push direction away from wall
+                const pushDirection = this.mesh.position.subtract(wall.position).normalize();
+                const pushForce = pushDirection.scale(0.3); // Gentle push away from wall
+                
+                // Apply push force to prevent getting stuck in walls
+                this.mesh.position.addInPlace(pushForce);
+                
+                return true; // Wall collision detected
+            }
+        }
+        return false;
+    }
+
+    public triggerShake(intensity: number = 1.0) {
+        // Add screen shake by applying random camera offset
+        const shakeAmount = intensity * 0.5;
+        const randomX = (Math.random() - 0.5) * shakeAmount;
+        const randomY = (Math.random() - 0.5) * shakeAmount;
+        
+        // Apply shake to camera position temporarily
+        this.camera.position.x += randomX;
+        this.camera.position.y += randomY;
+        
+        // Reset shake after a short delay
+        setTimeout(() => {
+            this.camera.position.x -= randomX;
+            this.camera.position.y -= randomY;
+        }, 50);
+    }
+
+    public takeDamage(blueSkyUrl?: string): boolean {
+        if (blueSkyUrl) {
+            this.collectedUrls.push(blueSkyUrl);
+        }
+        
+        this.health--;
+        this.triggerShake(2.0); // Stronger shake for damage
+        
+        // Return true if Arwing is destroyed (health <= 0)
+        return this.health <= 0;
+    }
+
+    public getHealth(): number {
+        return this.health;
+    }
+
+    public getMaxHealth(): number {
+        return this.maxHealth;
+    }
+
+    public getLastCollectedUrl(): string | undefined {
+        return this.collectedUrls[this.collectedUrls.length - 1];
+    }
+
+    public resetHealth() {
+        this.health = this.maxHealth;
+        this.collectedUrls = [];
+    }
+
+    public getLaserProjectiles(): LaserProjectile[] {
+        return this.laserProjectiles;
+    }
+
+    public removeLaserProjectile(index: number) {
+        if (index >= 0 && index < this.laserProjectiles.length) {
+            this.laserProjectiles[index].mesh.dispose();
+            this.laserProjectiles.splice(index, 1);
+        }
     }
 
     public dispose() {

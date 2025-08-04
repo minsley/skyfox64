@@ -55,6 +55,13 @@ interface BlueSkyVizProps {
     discardFraction?: number;
 }
 
+interface ExplosionParticle {
+    mesh: any;
+    velocity: Vector3;
+    createdTime: number;
+    lifetime: number;
+}
+
 // Add styles to head
 const styleSheet = document.createElement('style');
 styleSheet.textContent = `
@@ -67,6 +74,10 @@ styleSheet.textContent = `
     }
     .control-button:hover {
         opacity: 1 !important;
+    }
+    @keyframes flash {
+        0% { opacity: 0.3; }
+        100% { opacity: 0.7; }
     }
 `;
 document.head.appendChild(styleSheet);
@@ -92,8 +103,56 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     const arwingRef = useRef<Arwing | null>(null);
     const controlsRef = useRef<ArwingControlHandler | null>(null);
     const [arwingMode] = useState<boolean>(true);
+    const wallCollidersRef = useRef<any[]>([]);
+    const explosionParticlesRef = useRef<ExplosionParticle[]>([]);
 
     const tunnelLength = 40;
+
+    const createWallColliders = (scene: Scene) => {
+        // Create invisible wall colliders for the tunnel boundaries
+        const wallThickness = 1;
+        const tunnelWidth = 15; // Total tunnel width (7.4 * 2 + some margin)
+        const tunnelHeight = 15; // Total tunnel height (7.4 * 2 + some margin)
+        const colliderLength = tunnelLength * 2; // Make colliders longer than tunnel
+        
+        // Right wall collider (wall 0)
+        const rightWall = MeshBuilder.CreateBox("rightWallCollider", {
+            width: wallThickness,
+            height: tunnelHeight,
+            depth: colliderLength
+        }, scene);
+        rightWall.position.set(8.5, 0, -colliderLength/2); // Position outside right wall
+        rightWall.isVisible = false; // Make invisible
+        
+        // Left wall collider (wall 1)
+        const leftWall = MeshBuilder.CreateBox("leftWallCollider", {
+            width: wallThickness,
+            height: tunnelHeight,
+            depth: colliderLength
+        }, scene);
+        leftWall.position.set(-8.5, 0, -colliderLength/2); // Position outside left wall
+        leftWall.isVisible = false;
+        
+        // Top wall collider (wall 2)
+        const topWall = MeshBuilder.CreateBox("topWallCollider", {
+            width: tunnelWidth,
+            height: wallThickness,
+            depth: colliderLength
+        }, scene);
+        topWall.position.set(0, 8.5, -colliderLength/2); // Position above top wall
+        topWall.isVisible = false;
+        
+        // Bottom wall collider (wall 3)
+        const bottomWall = MeshBuilder.CreateBox("bottomWallCollider", {
+            width: tunnelWidth,
+            height: wallThickness,
+            depth: colliderLength
+        }, scene);
+        bottomWall.position.set(0, -8.5, -colliderLength/2); // Position below bottom wall
+        bottomWall.isVisible = false;
+        
+        wallCollidersRef.current = [rightWall, leftWall, topWall, bottomWall];
+    };
 
     const setupScene = (scene: Scene) => {
         scene.clearColor = new Color4(0, 0, 0, 1);
@@ -219,7 +278,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         }
     };
 
-    const createMessage = (text: string) => {
+    const createMessage = (text: string, postData?: any) => {
         if (!sceneRef.current || !texturePoolRef.current || !textWrapperRef.current) return;
        
         let wall = Math.floor(Math.random() * (4 + 1* settingsRef.current.specialFrequency));
@@ -279,13 +338,105 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         const arbitraryOrder = Math.round(Math.random() * 1000);
         (plane as any).renderOrder = wall === -1 ? arbitraryOrder + 10000 : arbitraryOrder;
 
+        // Generate Bluesky URL if we have post data
+        let blueSkyUrl: string | undefined;
+        if (postData && postData.commit?.record?.text && wall === -1) {
+            // Extract DID and rkey from the post data to construct URL
+            const did = postData.did;
+            const rkey = postData.commit?.rkey;
+            if (did && rkey) {
+                blueSkyUrl = `https://bsky.app/profile/${did}/post/${rkey}`;
+            }
+        }
+
         messageObjectsRef.current.push({
             mesh: plane,
             textureObj,
             speed: wall === -1 ? 0.005 + 0.5 * (0.08 + Math.random() * 0.12) : 0.05 + Math.random() * 0.005,
             special: wall === -1,
-            arbitraryOrder
+            arbitraryOrder,
+            blueSkyUrl
         });
+    };
+
+    const createExplosion = (position: Vector3) => {
+        if (!sceneRef.current) return;
+
+        // Create multiple explosion particles
+        const particleCount = 8;
+        for (let i = 0; i < particleCount; i++) {
+            const particle = MeshBuilder.CreateSphere("explosionParticle", {
+                diameter: 0.3
+            }, sceneRef.current);
+            
+            particle.position = position.clone();
+            
+            const particleMaterial = new StandardMaterial("explosionParticleMaterial", sceneRef.current);
+            particleMaterial.diffuseColor = new Color3(1, 0.5, 0); // Orange explosion color
+            particleMaterial.emissiveColor = new Color3(1, 0.2, 0);
+            particle.material = particleMaterial;
+
+            // Random velocity for each particle
+            const velocity = new Vector3(
+                (Math.random() - 0.5) * 10,
+                (Math.random() - 0.5) * 10,
+                (Math.random() - 0.5) * 10
+            );
+
+            const explosionParticle: ExplosionParticle = {
+                mesh: particle,
+                velocity,
+                createdTime: Date.now(),
+                lifetime: 1000 // 1 second lifetime
+            };
+            
+            explosionParticlesRef.current.push(explosionParticle);
+        }
+    };
+
+    const createArwingDestruction = (position: Vector3) => {
+        if (!sceneRef.current) return;
+
+        // Create many more particles for dramatic effect
+        const particleCount = 50;
+        for (let i = 0; i < particleCount; i++) {
+            const particle = MeshBuilder.CreateSphere("destructionParticle", {
+                diameter: Math.random() * 0.8 + 0.2 // Varied sizes
+            }, sceneRef.current);
+            
+            particle.position = position.clone();
+            
+            const particleMaterial = new StandardMaterial("destructionParticleMaterial", sceneRef.current);
+            // Mix of colors for more dramatic effect
+            const colorVariation = Math.random();
+            if (colorVariation < 0.4) {
+                particleMaterial.diffuseColor = new Color3(1, 0.2, 0); // Red
+                particleMaterial.emissiveColor = new Color3(1, 0.1, 0);
+            } else if (colorVariation < 0.7) {
+                particleMaterial.diffuseColor = new Color3(1, 0.6, 0); // Orange
+                particleMaterial.emissiveColor = new Color3(1, 0.3, 0);
+            } else {
+                particleMaterial.diffuseColor = new Color3(1, 1, 0.2); // Yellow
+                particleMaterial.emissiveColor = new Color3(1, 1, 0.1);
+            }
+            particle.material = particleMaterial;
+
+            // Much higher velocities to fill the screen
+            const velocity = new Vector3(
+                (Math.random() - 0.5) * 30,
+                (Math.random() - 0.5) * 30,
+                (Math.random() - 0.5) * 30
+            );
+
+            const explosionParticle: ExplosionParticle = {
+                mesh: particle,
+                velocity,
+                createdTime: Date.now(),
+                lifetime: 1500 // 1.5 second lifetime
+            };
+            
+            explosionParticlesRef.current.push(explosionParticle);
+        }
     };
 
     const updateScene = () => {
@@ -301,6 +452,12 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             const controls = controlsRef.current.getControls();
             arwingRef.current.update(deltaTime, controls);
             arwingSpeedMultiplier = arwingRef.current.getSpeedMultiplier(controls);
+            
+            // Check wall collisions
+            if (arwingRef.current.checkWallCollisions(wallCollidersRef.current)) {
+                // Trigger stronger screen shake for wall collision
+                arwingRef.current.triggerShake(2.0);
+            }
         }
         
         // Calculate audio multiplier
@@ -335,11 +492,93 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                 (message.mesh as any).renderOrder = message.mesh.position.z + 10000;
             }
 
+            // Check collision with laser projectiles (only for special messages)
+            if (arwingMode && arwingRef.current && message.special) {
+                const laserProjectiles = arwingRef.current.getLaserProjectiles();
+                let messageDestroyed = false;
+
+                for (let j = laserProjectiles.length - 1; j >= 0; j--) {
+                    const laser = laserProjectiles[j];
+                    const distance = Vector3.Distance(laser.mesh.position, message.mesh.position);
+                    
+                    if (distance < 2) { // Collision detected
+                        // Create explosion effect
+                        createExplosion(message.mesh.position);
+                        
+                        // Remove laser and message
+                        arwingRef.current.removeLaserProjectile(j);
+                        message.mesh.dispose();
+                        texturePoolRef.current?.release(message.textureObj);
+                        messageObjectsRef.current.splice(i, 1);
+                        messageDestroyed = true;
+                        break;
+                    }
+                }
+
+                if (messageDestroyed) continue;
+            }
+
+            // Check collision with Arwing if in Arwing mode (only for floating messages)
+            if (arwingMode && arwingRef.current && message.special && !isArwingDestroyed) {
+                if (arwingRef.current.checkCollisionWithMesh(message.mesh)) {
+                    // Create explosion effect
+                    createExplosion(message.mesh.position);
+                    
+                    // Take damage and store URL
+                    const isDestroyed = arwingRef.current.takeDamage(message.blueSkyUrl);
+                    
+                    // Update health display
+                    setArwingHealth(arwingRef.current.getHealth());
+                    
+                    // If Arwing is destroyed (health <= 0), start destruction animation
+                    if (isDestroyed) {
+                        const lastUrl = arwingRef.current.getLastCollectedUrl();
+                        console.log('Arwing destroyed! URL:', lastUrl); // Debug log
+                        if (lastUrl) {
+                            // Trigger destruction animation
+                            const startTime = Date.now();
+                            console.log('Starting destruction animation at:', startTime); // Debug log
+                            setIsArwingDestroyed(true);
+                            setDestructionStartTime(startTime);
+                            setPendingBlueskyUrl(lastUrl);
+                            createArwingDestruction(arwingRef.current.mesh.position);
+                        }
+                    }
+                    
+                    message.mesh.dispose();
+                    texturePoolRef.current?.release(message.textureObj);
+                    messageObjectsRef.current.splice(i, 1);
+                    continue; // Skip the rest of the loop for this message
+                }
+            }
+
             if (message.mesh.position.z > 10) {
                 message.mesh.dispose();
                 texturePoolRef.current?.release(message.textureObj);
                 messageObjectsRef.current.splice(i, 1);
             }
+        }
+
+        // Update explosion particles
+        for (let i = explosionParticlesRef.current.length - 1; i >= 0; i--) {
+            const particle = explosionParticlesRef.current[i];
+            const elapsed = currentTime - particle.createdTime;
+            
+            if (elapsed > particle.lifetime) {
+                particle.mesh.dispose();
+                explosionParticlesRef.current.splice(i, 1);
+                continue;
+            }
+            
+            // Move particle and fade out over time
+            particle.mesh.position.addInPlace(particle.velocity.scale(deltaTime));
+            const fadeProgress = elapsed / particle.lifetime;
+            const material = particle.mesh.material as StandardMaterial;
+            material.alpha = 1 - fadeProgress;
+            
+            // Shrink particle over time
+            const scale = 1 - fadeProgress * 0.5;
+            particle.mesh.scaling.setAll(scale);
         }
 
         // Handle connecting message fade out
@@ -358,6 +597,12 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             }
         }
 
+        // Handle Arwing destruction animation timing (but don't reset here)
+        if (isArwingDestroyed && destructionStartTime && pendingBlueskyUrl) {
+            const elapsed = Date.now() - destructionStartTime;
+            console.log('Destruction elapsed:', elapsed, 'ms'); // Debug log
+        }
+
         sceneRef.current.render();
         animationFrameRef.current = requestAnimationFrame(updateScene);
     };
@@ -371,6 +616,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         textWrapperRef.current = new TextWrapper();
 
         setupScene(sceneRef.current);
+        createWallColliders(sceneRef.current);
         
         // Initialize Arwing if in Arwing mode
         if (arwingMode) {
@@ -477,7 +723,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                     lastMessageTime = Date.now(); // Update last message time
                     const data = JSON.parse(event.data);
                     if (data.commit?.record?.text) {
-                        createMessage(data.commit.record.text);
+                        createMessage(data.commit.record.text, data);
                     }
                 };
                 
@@ -550,6 +796,12 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             if (ws) {
                 ws.close(1000, 'Component unmounting'); // Clean close
             }
+            // Clean up explosion particles
+            explosionParticlesRef.current.forEach(particle => {
+                particle.mesh.dispose();
+            });
+            explosionParticlesRef.current = [];
+            
             arwingRef.current?.dispose();
             controlsRef.current?.dispose();
             engineRef.current?.dispose();
@@ -560,6 +812,10 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     const [isMouseActive, setIsMouseActive] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [showMusic, setShowMusic] = useState(false);
+    const [arwingHealth, setArwingHealth] = useState(3);
+    const [isArwingDestroyed, setIsArwingDestroyed] = useState(false);
+    const [destructionStartTime, setDestructionStartTime] = useState<number | null>(null);
+    const [pendingBlueskyUrl, setPendingBlueskyUrl] = useState<string | null>(null);
     const [settings, setSettings] = useState<Settings>({
         discardFraction: discardFraction,
         baseSpeed: 1.0,
@@ -601,6 +857,26 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         };
     }, []);
 
+    // Handle destruction timer
+    useEffect(() => {
+        if (isArwingDestroyed && destructionStartTime && pendingBlueskyUrl) {
+            console.log('Setting destruction timer for URL:', pendingBlueskyUrl);
+            const timer = setTimeout(() => {
+                console.log('Destruction timer complete, navigating to:', pendingBlueskyUrl);
+                window.open(pendingBlueskyUrl, '_self');
+                
+                // Reset everything for next round
+                setIsArwingDestroyed(false);
+                setDestructionStartTime(null);
+                setPendingBlueskyUrl(null);
+                arwingRef.current?.resetHealth();
+                setArwingHealth(3);
+            }, 1500);
+
+            return () => clearTimeout(timer);
+        }
+    }, [isArwingDestroyed, destructionStartTime, pendingBlueskyUrl]);
+
     
     return (
         <div 
@@ -614,6 +890,49 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                 style={{ width: '100%', height: '100%' }}
                 id="renderCanvas"
             />
+            {/* Health indicator */}
+            <div style={{ 
+                position: 'absolute', 
+                top: '20px', 
+                left: '20px',
+                transition: 'opacity 0.3s ease-in-out',
+                opacity: isMouseActive || arwingHealth < 3 ? 1 : 0.3
+            }}>
+                <div style={{
+                    width: '150px',
+                    height: '20px',
+                    border: '2px solid #fff',
+                    borderRadius: '10px',
+                    background: 'linear-gradient(to right, #ff0000, #0000ff)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    boxShadow: '0 0 10px rgba(255, 255, 255, 0.3)'
+                }}>
+                    {/* Health fill overlay */}
+                    <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        background: 'linear-gradient(to right, #ff0000, #0000ff)',
+                        clipPath: `inset(0 ${100 - (arwingHealth / 3) * 100}% 0 0)`,
+                        transition: 'clip-path 0.3s ease-in-out',
+                        boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.3)'
+                    }} />
+                    {/* Empty overlay for depleted health */}
+                    <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        right: 0,
+                        width: `${100 - (arwingHealth / 3) * 100}%`,
+                        height: '100%',
+                        backgroundColor: '#333',
+                        transition: 'width 0.3s ease-in-out'
+                    }} />
+                </div>
+            </div>
+
             <div style={{ position: 'absolute', bottom: '20px', right: '20px', display: 'flex', gap: '10px' }}>
                 <div
                     className="control-button"
@@ -637,6 +956,22 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                     </svg>
                 </div>
             </div>
+            
+            {/* Destruction overlay effect */}
+            {isArwingDestroyed && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'radial-gradient(circle, rgba(255,100,0,0.4) 0%, rgba(255,0,0,0.1) 100%)',
+                    pointerEvents: 'none',
+                    zIndex: 999,
+                    animation: 'flash 0.2s infinite alternate'
+                }} />
+            )}
+            
             {true && (
                 <div style={{
                    
