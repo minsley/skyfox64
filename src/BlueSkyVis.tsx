@@ -472,6 +472,9 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             // Check collision with Arwing if in Arwing mode (only for floating messages)
             if (arwingMode && arwingRef.current && message.special) {
                 if (arwingRef.current.checkCollisionWithMesh(message.mesh)) {
+                    // Create explosion effect
+                    createExplosion(message.mesh.position);
+                    
                     // Take damage and store URL
                     const isDestroyed = arwingRef.current.takeDamage(message.blueSkyUrl);
                     
