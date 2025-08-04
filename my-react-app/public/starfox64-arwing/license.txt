@@ -1,0 +1,11 @@
+Model Information:
+* title:	Nintendo 64 - Star Fox 64 - Arwing
+* source:	https://sketchfab.com/3d-models/nintendo-64-star-fox-64-arwing-040be22412f04cfb9ed9d53771da8c4c
+* author:	spencer.psi0918 (https://sketchfab.com/spencer.psi0918)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Nintendo 64 - Star Fox 64 - Arwing" (https://sketchfab.com/3d-models/nintendo-64-star-fox-64-arwing-040be22412f04cfb9ed9d53771da8c4c) by spencer.psi0918 (https://sketchfab.com/spencer.psi0918) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

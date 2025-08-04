@@ -7,6 +7,8 @@ import {
     UniversalCamera,
     TransformNode
 } from '@babylonjs/core';
+import { SceneLoader } from '@babylonjs/core/Loading/sceneLoader';
+import '@babylonjs/loaders/glTF/2.0/glTFLoader';
 
 export interface ArwingControls {
     forward: boolean;
@@ -29,8 +31,8 @@ export class Arwing {
     private velocity: Vector3 = Vector3.Zero();
     private angularVelocity: Vector3 = Vector3.Zero();
     private baseSpeed = 0.1;
-    private boostSpeed = 50;
-    private brakeSpeed = 10;
+    private boostSpeed = -0.1;
+    private brakeSpeed = 0.2;
     private turnSpeed = 2;
     private isBarrelRolling = false;
     private barrelRollTime = 0;
@@ -41,13 +43,43 @@ export class Arwing {
     constructor(scene: Scene) {
         this.scene = scene;
         this.mesh = new TransformNode("arwing", scene);
-        this.createArwingModel();
         this.setupCamera();
         this.mesh.position = new Vector3(0, 0, -20);
+        // Load model asynchronously
+        this.loadArwingModel();
     }
 
-    private createArwingModel() {
-        // Main body (elongated box)
+    private async loadArwingModel() {
+        try {
+            const result = await SceneLoader.ImportMeshAsync(
+                "",
+                "/starfox64-arwing/",
+                "scene.gltf",
+                this.scene
+            );
+
+            // Parent all loaded meshes to our transform node
+            result.meshes.forEach(mesh => {
+                if (mesh.parent === null) {
+                    mesh.parent = this.mesh;
+                }
+            });
+
+            // Scale and orient the model if needed
+            this.mesh.scaling = new Vector3(1,1,1); // Adjust scale as needed
+            this.mesh.rotation.y = Math.PI; // Face forward
+            
+            console.log("Arwing GLTF model loaded successfully");
+
+        } catch (error) {
+            console.error("Failed to load Arwing GLTF model:", error);
+            // Fallback to a simple primitive if GLTF loading fails
+            this.createFallbackModel();
+        }
+    }
+
+    private createFallbackModel() {
+        console.log("Using fallback primitive model");
         const body = MeshBuilder.CreateBox("arwingBody", {
             width: 2,
             height: 0.5,
@@ -57,87 +89,11 @@ export class Arwing {
 
         const bodyMaterial = new StandardMaterial("bodyMaterial", this.scene);
         bodyMaterial.diffuseColor = new Color3(0.7, 0.7, 0.8);
-        bodyMaterial.specularColor = new Color3(0.9, 0.9, 1);
         body.material = bodyMaterial;
-
-        // Wings
-        const leftWing = MeshBuilder.CreateBox("leftWing", {
-            width: 4,
-            height: 0.2,
-            depth: 2
-        }, this.scene);
-        leftWing.position = new Vector3(-3, 0, -1);
-        leftWing.parent = this.mesh;
-
-        const rightWing = MeshBuilder.CreateBox("rightWing", {
-            width: 4,
-            height: 0.2,
-            depth: 2
-        }, this.scene);
-        rightWing.position = new Vector3(3, 0, -1);
-        rightWing.parent = this.mesh;
-
-        const wingMaterial = new StandardMaterial("wingMaterial", this.scene);
-        wingMaterial.diffuseColor = new Color3(0.2, 0.4, 0.8);
-        leftWing.material = wingMaterial;
-        rightWing.material = wingMaterial;
-
-        // Wing tips/lasers
-        const leftLaser = MeshBuilder.CreateSphere("leftLaser", {
-            diameter: 0.4
-        }, this.scene);
-        leftLaser.position = new Vector3(-5, 0, -1);
-        leftLaser.parent = this.mesh;
-
-        const rightLaser = MeshBuilder.CreateSphere("rightLaser", {
-            diameter: 0.4
-        }, this.scene);
-        rightLaser.position = new Vector3(5, 0, -1);
-        rightLaser.parent = this.mesh;
-
-        const laserMaterial = new StandardMaterial("laserMaterial", this.scene);
-        laserMaterial.diffuseColor = new Color3(1, 0.2, 0.2);
-        laserMaterial.emissiveColor = new Color3(0.5, 0.1, 0.1);
-        leftLaser.material = laserMaterial;
-        rightLaser.material = laserMaterial;
-
-        // Cockpit
-        const cockpit = MeshBuilder.CreateSphere("cockpit", {
-            diameter: 1
-        }, this.scene);
-        cockpit.position = new Vector3(0, 0.3, 1);
-        cockpit.parent = this.mesh;
-
-        const cockpitMaterial = new StandardMaterial("cockpitMaterial", this.scene);
-        cockpitMaterial.diffuseColor = new Color3(0.1, 0.1, 0.3);
-        cockpitMaterial.alpha = 0.7;
-        cockpit.material = cockpitMaterial;
-
-        // Engines
-        const leftEngine = MeshBuilder.CreateCylinder("leftEngine", {
-            height: 1.5,
-            diameter: 0.6
-        }, this.scene);
-        leftEngine.position = new Vector3(-1.5, -0.2, -2.5);
-        leftEngine.rotation.x = Math.PI / 2;
-        leftEngine.parent = this.mesh;
-
-        const rightEngine = MeshBuilder.CreateCylinder("rightEngine", {
-            height: 1.5,
-            diameter: 0.6
-        }, this.scene);
-        rightEngine.position = new Vector3(1.5, -0.2, -2.5);
-        rightEngine.rotation.x = Math.PI / 2;
-        rightEngine.parent = this.mesh;
-
-        const engineMaterial = new StandardMaterial("engineMaterial", this.scene);
-        engineMaterial.diffuseColor = new Color3(0.5, 0.5, 0.5);
-        leftEngine.material = engineMaterial;
-        rightEngine.material = engineMaterial;
     }
 
     private setupCamera() {
-        this.camera = new UniversalCamera("arwingCamera", new Vector3(0, 2, 10), this.scene);
+        this.camera = new UniversalCamera("arwingCamera", new Vector3(0, 2, -10), this.scene);
         this.camera.parent = this.mesh;
         this.camera.setTarget(Vector3.Zero());
         // this.camera.rotation.y = Math.PI;
