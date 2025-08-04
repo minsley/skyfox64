@@ -10,6 +10,7 @@ https://github.com/user-attachments/assets/4b2e186c-9b66-4433-9b23-eac6ae33e102
 
 - Fly an Arwing through a tunnel of realtime Bluesky posts
 - Do a barrel roll, use the boost, you know the drill
+- Watch your health, if you hit 3 posts it's game over
 - Built with Babylon.js
 
 ## Controls
