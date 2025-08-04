@@ -75,6 +75,10 @@ styleSheet.textContent = `
     .control-button:hover {
         opacity: 1 !important;
     }
+    @keyframes flash {
+        0% { opacity: 0.3; }
+        100% { opacity: 0.7; }
+    }
 `;
 document.head.appendChild(styleSheet);
 
@@ -390,6 +394,51 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         }
     };
 
+    const createArwingDestruction = (position: Vector3) => {
+        if (!sceneRef.current) return;
+
+        // Create many more particles for dramatic effect
+        const particleCount = 50;
+        for (let i = 0; i < particleCount; i++) {
+            const particle = MeshBuilder.CreateSphere("destructionParticle", {
+                diameter: Math.random() * 0.8 + 0.2 // Varied sizes
+            }, sceneRef.current);
+            
+            particle.position = position.clone();
+            
+            const particleMaterial = new StandardMaterial("destructionParticleMaterial", sceneRef.current);
+            // Mix of colors for more dramatic effect
+            const colorVariation = Math.random();
+            if (colorVariation < 0.4) {
+                particleMaterial.diffuseColor = new Color3(1, 0.2, 0); // Red
+                particleMaterial.emissiveColor = new Color3(1, 0.1, 0);
+            } else if (colorVariation < 0.7) {
+                particleMaterial.diffuseColor = new Color3(1, 0.6, 0); // Orange
+                particleMaterial.emissiveColor = new Color3(1, 0.3, 0);
+            } else {
+                particleMaterial.diffuseColor = new Color3(1, 1, 0.2); // Yellow
+                particleMaterial.emissiveColor = new Color3(1, 1, 0.1);
+            }
+            particle.material = particleMaterial;
+
+            // Much higher velocities to fill the screen
+            const velocity = new Vector3(
+                (Math.random() - 0.5) * 30,
+                (Math.random() - 0.5) * 30,
+                (Math.random() - 0.5) * 30
+            );
+
+            const explosionParticle: ExplosionParticle = {
+                mesh: particle,
+                velocity,
+                createdTime: Date.now(),
+                lifetime: 1500 // 1.5 second lifetime
+            };
+            
+            explosionParticlesRef.current.push(explosionParticle);
+        }
+    };
+
     const updateScene = () => {
         if (!sceneRef.current || !engineRef.current || !cameraRef.current) return;
 
@@ -470,7 +519,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             }
 
             // Check collision with Arwing if in Arwing mode (only for floating messages)
-            if (arwingMode && arwingRef.current && message.special) {
+            if (arwingMode && arwingRef.current && message.special && !isArwingDestroyed) {
                 if (arwingRef.current.checkCollisionWithMesh(message.mesh)) {
                     // Create explosion effect
                     createExplosion(message.mesh.position);
@@ -481,15 +530,16 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                     // Update health display
                     setArwingHealth(arwingRef.current.getHealth());
                     
-                    // If Arwing is destroyed (health <= 0), open the last collected URL
+                    // If Arwing is destroyed (health <= 0), start destruction animation
                     if (isDestroyed) {
                         const lastUrl = arwingRef.current.getLastCollectedUrl();
                         if (lastUrl) {
-                            window.open(lastUrl, '_self');
+                            // Trigger destruction animation
+                            setIsArwingDestroyed(true);
+                            setDestructionStartTime(Date.now());
+                            setPendingBlueskyUrl(lastUrl);
+                            createArwingDestruction(arwingRef.current.mesh.position);
                         }
-                        // Reset health for next round
-                        arwingRef.current.resetHealth();
-                        setArwingHealth(arwingRef.current.getHealth());
                     }
                     
                     message.mesh.dispose();
@@ -541,6 +591,22 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                     texturePoolRef.current?.release(connectingMessageRef.current.textureObj);
                     connectingMessageRef.current = null;
                 }
+            }
+        }
+
+        // Handle Arwing destruction animation and delayed navigation
+        if (isArwingDestroyed && destructionStartTime && pendingBlueskyUrl) {
+            const elapsed = currentTime - destructionStartTime;
+            if (elapsed >= 1500) { // 1.5 seconds
+                // Animation complete, navigate to Bluesky and reset
+                window.open(pendingBlueskyUrl, '_self');
+                
+                // Reset everything for next round
+                setIsArwingDestroyed(false);
+                setDestructionStartTime(null);
+                setPendingBlueskyUrl(null);
+                arwingRef.current?.resetHealth();
+                setArwingHealth(3);
             }
         }
 
@@ -754,6 +820,9 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     const [showSettings, setShowSettings] = useState(false);
     const [showMusic, setShowMusic] = useState(false);
     const [arwingHealth, setArwingHealth] = useState(3);
+    const [isArwingDestroyed, setIsArwingDestroyed] = useState(false);
+    const [destructionStartTime, setDestructionStartTime] = useState<number | null>(null);
+    const [pendingBlueskyUrl, setPendingBlueskyUrl] = useState<string | null>(null);
     const [settings, setSettings] = useState<Settings>({
         discardFraction: discardFraction,
         baseSpeed: 1.0,
@@ -874,6 +943,22 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                     </svg>
                 </div>
             </div>
+            
+            {/* Destruction overlay effect */}
+            {isArwingDestroyed && destructionStartTime && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: `radial-gradient(circle, rgba(255,100,0,${Math.sin((Date.now() - destructionStartTime) / 100) * 0.3 + 0.2}) 0%, rgba(255,0,0,0.1) 100%)`,
+                    pointerEvents: 'none',
+                    zIndex: 999,
+                    animation: 'flash 0.1s infinite alternate'
+                }} />
+            )}
+            
             {true && (
                 <div style={{
                    
