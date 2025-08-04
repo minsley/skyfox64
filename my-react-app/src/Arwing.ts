@@ -168,9 +168,9 @@ export class Arwing {
         } else {
             // Check for barrel roll input
             if (controls.barrelRollLeft) {
-                this.startBarrelRoll(-1);
-            } else if (controls.barrelRollRight) {
                 this.startBarrelRoll(1);
+            } else if (controls.barrelRollRight) {
+                this.startBarrelRoll(-1);
             }
         }
     }

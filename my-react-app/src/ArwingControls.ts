@@ -16,8 +16,10 @@ export class ArwingControlHandler {
     };
 
     private keys: { [key: string]: boolean } = {};
-    private lastZPress = 0;
-    private lastRPress = 0;
+    private lastAPress = 0;
+    private lastDPress = 0;
+    private aReleased = true; // Track if A was released since last press
+    private dReleased = true; // Track if D was released since last press
     private doubleClickTime = 300; // ms for double-tap detection
 
     constructor() {
@@ -62,9 +64,17 @@ export class ArwingControlHandler {
                 break;
             case 'a':
                 this.controls.left = true;
+                if (this.aReleased) {
+                    this.handleDoubleA();
+                    this.aReleased = false; // Mark as not released
+                }
                 break;
             case 'd':
                 this.controls.right = true;
+                if (this.dReleased) {
+                    this.handleDoubleD();
+                    this.dReleased = false; // Mark as not released
+                }
                 break;
             case 'shift':
                 this.controls.boost = true;
@@ -75,12 +85,6 @@ export class ArwingControlHandler {
             case ' ':
                 this.controls.fire = true;
                 event.preventDefault(); // Prevent page scroll
-                break;
-            case 'e':
-                this.handleDoubleZ();
-                break;
-            case 'q':
-                this.handleDoubleR();
                 break;
         }
     }
@@ -98,9 +102,11 @@ export class ArwingControlHandler {
                 break;
             case 'a':
                 this.controls.left = false;
+                this.aReleased = true; // Mark as released
                 break;
             case 'd':
                 this.controls.right = false;
+                this.dReleased = true; // Mark as released
                 break;
             case 'shift':
                 this.controls.boost = false;
@@ -132,24 +138,28 @@ export class ArwingControlHandler {
         }
     }
 
-    private handleDoubleZ() {
+    private handleDoubleA() {
         const now = Date.now();
-        if (now - this.lastZPress < this.doubleClickTime) {
-            // Double Z pressed - barrel roll left
+        if (now - this.lastAPress < this.doubleClickTime && this.lastAPress > 0) {
+            // Double A pressed - barrel roll left
             this.controls.barrelRollLeft = true;
             console.log("Do a barrel roll! (Left)");
+            this.lastAPress = 0; // Reset to prevent multiple triggers
+        } else {
+            this.lastAPress = now;
         }
-        this.lastZPress = now;
     }
 
-    private handleDoubleR() {
+    private handleDoubleD() {
         const now = Date.now();
-        if (now - this.lastRPress < this.doubleClickTime) {
-            // Double R pressed - barrel roll right
+        if (now - this.lastDPress < this.doubleClickTime && this.lastDPress > 0) {
+            // Double D pressed - barrel roll right
             this.controls.barrelRollRight = true;
             console.log("Do a barrel roll! (Right)");
+            this.lastDPress = 0; // Reset to prevent multiple triggers
+        } else {
+            this.lastDPress = now;
         }
-        this.lastRPress = now;
     }
 
     public getControls(): ArwingControls {
@@ -170,8 +180,8 @@ export class ArwingControlHandler {
         Special:
         Shift - Boost
         Ctrl - Brake
-        ZZ (double tap) - Barrel Roll Left
-        RR (double tap) - Barrel Roll Right
+        AA (double tap) - Barrel Roll Left
+        DD (double tap) - Barrel Roll Right
         `;
     }
 
