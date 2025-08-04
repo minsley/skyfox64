@@ -28,9 +28,9 @@ export class Arwing {
     private scene: Scene;
     private velocity: Vector3 = Vector3.Zero();
     private angularVelocity: Vector3 = Vector3.Zero();
-    private baseSpeed = 50;
-    private boostSpeed = 100;
-    private brakeSpeed = 20;
+    private baseSpeed = 0.1;
+    private boostSpeed = 50;
+    private brakeSpeed = 10;
     private turnSpeed = 2;
     private isBarrelRolling = false;
     private barrelRollTime = 0;
@@ -43,7 +43,7 @@ export class Arwing {
         this.mesh = new TransformNode("arwing", scene);
         this.createArwingModel();
         this.setupCamera();
-        this.mesh.position = new Vector3(0, 0, -50);
+        this.mesh.position = new Vector3(0, 0, -20);
     }
 
     private createArwingModel() {
@@ -137,9 +137,16 @@ export class Arwing {
     }
 
     private setupCamera() {
-        this.camera = new UniversalCamera("arwingCamera", new Vector3(0, 2, -10), this.scene);
+        this.camera = new UniversalCamera("arwingCamera", new Vector3(0, 2, 10), this.scene);
         this.camera.parent = this.mesh;
         this.camera.setTarget(Vector3.Zero());
+        // this.camera.rotation.y = Math.PI;
+        // this.camera.rotation.x = 0.15;
+        this.camera.fov = 1.85;
+        // this.camera.position.z = 8;
+        // this.camera.position.y = 1;
+        this.camera.maxZ = 50;
+        this.camera.minZ = -50;
     }
 
     public update(deltaTime: number, controls: ArwingControls) {
@@ -156,24 +163,18 @@ export class Arwing {
         if (controls.boost) currentSpeed = this.boostSpeed;
         if (controls.brake) currentSpeed = this.brakeSpeed;
 
-        // Forward/backward movement
-        if (controls.forward) {
-            this.velocity.z = currentSpeed;
-        } else if (controls.backward) {
-            this.velocity.z = -currentSpeed * 0.5;
-        } else {
-            this.velocity.z *= 0.95; // Gradual slowdown
-        }
+        // Constant forward movement
+        this.velocity.z = currentSpeed;
 
         // Lateral movement
         let lateralInput = 0;
-        if (controls.left) lateralInput -= 1;
-        if (controls.right) lateralInput += 1;
+        if (controls.left) lateralInput += 1;
+        if (controls.right) lateralInput -= 1;
 
         // Vertical movement
         let verticalInput = 0;
-        if (controls.up) verticalInput += 1;
-        if (controls.down) verticalInput -= 1;
+        if (controls.up) verticalInput -= 1;
+        if (controls.down) verticalInput += 1;
 
         // Apply movement with banking
         this.velocity.x = lateralInput * currentSpeed * 0.5;

@@ -8,7 +8,9 @@ import {
     UniversalCamera,
     StandardMaterial,
     MeshBuilder,
-    Material
+    Material,
+    HemisphericLight,
+    DirectionalLight
 } from '@babylonjs/core';
 import { TexturePool } from './TexturePool';
 import { MessageObject, TextureUpdateResult, Settings } from './types';
@@ -89,7 +91,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     const connectingMessageRef = useRef<MessageObject | null>(null);
     const arwingRef = useRef<Arwing | null>(null);
     const controlsRef = useRef<ArwingControlHandler | null>(null);
-    const [arwingMode, setArwingMode] = useState<boolean>(false);
+    const [arwingMode, setArwingMode] = useState<boolean>(true);
 
     const tunnelLength = 40;
 
@@ -99,6 +101,15 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         scene.fogColor = new Color3(0, 0, 0);
         scene.fogStart = 35;
         scene.fogEnd = 40;
+
+        // Add lighting for Arwing visibility
+        const ambientLight = new HemisphericLight("ambientLight", new Vector3(0, 1, 0), scene);
+        ambientLight.intensity = 0.7;
+        ambientLight.diffuse = new Color3(0.8, 0.8, 1);
+
+        const sunLight = new DirectionalLight("sunLight", new Vector3(-1, -1, 1), scene);
+        sunLight.intensity = 0.8;
+        sunLight.diffuse = new Color3(1, 0.9, 0.7);
 
         scene.setRenderingOrder(0, null, null, (a, b) => {
             const meshA = a.getMesh();
@@ -603,14 +614,14 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                     className="control-button"
                     style={{
                         opacity: isMouseActive ? .7 : 0,
-                        backgroundColor: arwingMode ? 'rgba(0, 255, 0, 0.5)' : 'rgba(0, 0, 0, 0.5)',
+                        backgroundColor: arwingMode ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 255, 0, 0.5)',
                     }}
                     onClick={() => {
                         setArwingMode(!arwingMode);
                         // Will reinitialize on next render
                         window.location.reload();
                     }}
-                    title="Toggle Arwing Mode"
+                    title="Toggle Static Camera Mode"
                 >
                     <svg 
                         xmlns="http://www.w3.org/2000/svg" 
@@ -623,9 +634,8 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                         strokeLinecap="round" 
                         strokeLinejoin="round"
                     >
-                        <path d="M12 2l-2 7h4l-2-7z"></path>
-                        <path d="M12 17l-8-5 16 0-8 5z"></path>
-                        <path d="M2 12l8-5M22 12l-8-5"></path>
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
                     </svg>
                 </div>
             </div>

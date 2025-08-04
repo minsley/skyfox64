@@ -55,24 +55,16 @@ export class ArwingControlHandler {
 
         switch (key) {
             case 'w':
-                this.controls.forward = true;
+                this.controls.up = true;
                 break;
             case 's':
-                this.controls.backward = true;
+                this.controls.down = true;
                 break;
             case 'a':
                 this.controls.left = true;
                 break;
             case 'd':
                 this.controls.right = true;
-                break;
-            case 'q':
-            case 'arrowup':
-                this.controls.up = true;
-                break;
-            case 'e':
-            case 'arrowdown':
-                this.controls.down = true;
                 break;
             case 'shift':
                 this.controls.boost = true;
@@ -99,24 +91,16 @@ export class ArwingControlHandler {
 
         switch (key) {
             case 'w':
-                this.controls.forward = false;
+                this.controls.up = false;
                 break;
             case 's':
-                this.controls.backward = false;
+                this.controls.down = false;
                 break;
             case 'a':
                 this.controls.left = false;
                 break;
             case 'd':
                 this.controls.right = false;
-                break;
-            case 'q':
-            case 'arrowup':
-                this.controls.up = false;
-                break;
-            case 'e':
-            case 'arrowdown':
-                this.controls.down = false;
                 break;
             case 'shift':
                 this.controls.boost = false;
@@ -177,9 +161,8 @@ export class ArwingControlHandler {
         ARWING CONTROLS:
         
         Flight:
-        W/S - Forward/Backward
+        W/S - Up/Down
         A/D - Left/Right
-        Q/E or ↑/↓ - Up/Down
         
         Combat:
         Space or Left Click - Fire Lasers
