@@ -533,10 +533,13 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                     // If Arwing is destroyed (health <= 0), start destruction animation
                     if (isDestroyed) {
                         const lastUrl = arwingRef.current.getLastCollectedUrl();
+                        console.log('Arwing destroyed! URL:', lastUrl); // Debug log
                         if (lastUrl) {
                             // Trigger destruction animation
+                            const startTime = Date.now();
+                            console.log('Starting destruction animation at:', startTime); // Debug log
                             setIsArwingDestroyed(true);
-                            setDestructionStartTime(Date.now());
+                            setDestructionStartTime(startTime);
                             setPendingBlueskyUrl(lastUrl);
                             createArwingDestruction(arwingRef.current.mesh.position);
                         }
@@ -594,20 +597,10 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             }
         }
 
-        // Handle Arwing destruction animation and delayed navigation
+        // Handle Arwing destruction animation timing (but don't reset here)
         if (isArwingDestroyed && destructionStartTime && pendingBlueskyUrl) {
-            const elapsed = currentTime - destructionStartTime;
-            if (elapsed >= 1500) { // 1.5 seconds
-                // Animation complete, navigate to Bluesky and reset
-                window.open(pendingBlueskyUrl, '_self');
-                
-                // Reset everything for next round
-                setIsArwingDestroyed(false);
-                setDestructionStartTime(null);
-                setPendingBlueskyUrl(null);
-                arwingRef.current?.resetHealth();
-                setArwingHealth(3);
-            }
+            const elapsed = Date.now() - destructionStartTime;
+            console.log('Destruction elapsed:', elapsed, 'ms'); // Debug log
         }
 
         sceneRef.current.render();
@@ -864,6 +857,26 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         };
     }, []);
 
+    // Handle destruction timer
+    useEffect(() => {
+        if (isArwingDestroyed && destructionStartTime && pendingBlueskyUrl) {
+            console.log('Setting destruction timer for URL:', pendingBlueskyUrl);
+            const timer = setTimeout(() => {
+                console.log('Destruction timer complete, navigating to:', pendingBlueskyUrl);
+                window.open(pendingBlueskyUrl, '_self');
+                
+                // Reset everything for next round
+                setIsArwingDestroyed(false);
+                setDestructionStartTime(null);
+                setPendingBlueskyUrl(null);
+                arwingRef.current?.resetHealth();
+                setArwingHealth(3);
+            }, 1500);
+
+            return () => clearTimeout(timer);
+        }
+    }, [isArwingDestroyed, destructionStartTime, pendingBlueskyUrl]);
+
     
     return (
         <div 
@@ -945,17 +958,17 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             </div>
             
             {/* Destruction overlay effect */}
-            {isArwingDestroyed && destructionStartTime && (
+            {isArwingDestroyed && (
                 <div style={{
                     position: 'fixed',
                     top: 0,
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    background: `radial-gradient(circle, rgba(255,100,0,${Math.sin((Date.now() - destructionStartTime) / 100) * 0.3 + 0.2}) 0%, rgba(255,0,0,0.1) 100%)`,
+                    background: 'radial-gradient(circle, rgba(255,100,0,0.4) 0%, rgba(255,0,0,0.1) 100%)',
                     pointerEvents: 'none',
                     zIndex: 999,
-                    animation: 'flash 0.1s infinite alternate'
+                    animation: 'flash 0.2s infinite alternate'
                 }} />
             )}
             
