@@ -141,8 +141,8 @@ export class Arwing {
         if (controls.down) verticalInput += 1;
 
         // Add in-plane velocity
-        this.velocity.x = -lateralInput * this.turnSpeed * 3;
-        this.velocity.y = -verticalInput * this.turnSpeed * 3;
+        this.velocity.x = -lateralInput * this.turnSpeed * 5;
+        this.velocity.y = -verticalInput * this.turnSpeed * 5;
 
         // Banking when turning
         this.angularVelocity.z = -lateralInput * this.turnSpeed;
@@ -152,7 +152,7 @@ export class Arwing {
     private handleBarrelRoll(deltaTime: number, controls: ArwingControls) {
         if (this.isBarrelRolling) {
             this.barrelRollTime += deltaTime;
-            const rollDuration = 0.8; // seconds
+            const rollDuration = 0.7; // seconds
             
             if (this.barrelRollTime >= rollDuration) {
                 // Complete barrel roll
@@ -162,7 +162,7 @@ export class Arwing {
             } else {
                 // Animate barrel roll
                 const progress = this.barrelRollTime / rollDuration;
-                const easing = Math.sin(progress * Math.PI); // Smooth ease in/out
+                const easing = this.easeOutBack(progress);
                 this.mesh.rotation.z = this.barrelRollDirection * Math.PI * 2 * easing;
             }
         } else {
@@ -173,6 +173,13 @@ export class Arwing {
                 this.startBarrelRoll(1);
             }
         }
+    }
+
+    private easeOutBack(x: number): number {
+        const c1 = 1.70158;
+        const c3 = c1 + 1;
+
+        return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
     }
 
     private startBarrelRoll(direction: number) {

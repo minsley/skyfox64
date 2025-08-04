@@ -76,10 +76,10 @@ export class ArwingControlHandler {
                 this.controls.fire = true;
                 event.preventDefault(); // Prevent page scroll
                 break;
-            case 'z':
+            case 'e':
                 this.handleDoubleZ();
                 break;
-            case 'r':
+            case 'q':
                 this.handleDoubleR();
                 break;
         }
