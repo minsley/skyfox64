@@ -56,12 +56,16 @@ export class Arwing {
     private onBrakeStarted?: () => void; // Callback for brake sound
     private previousBoostState = false; // Track previous boost state
     private previousBrakeState = false; // Track previous brake state
+    private engineGlow: any; // Engine glow mesh
+    private glowBaseSize = 0.7; // Base size for engine glow
 
     constructor(scene: Scene) {
         this.scene = scene;
         this.mesh = new TransformNode("arwing", scene);
         this.setupCamera();
         this.mesh.position = new Vector3(0, 0, this.basePositionZ);
+        // Create engine glow
+        this.createEngineGlow();
         // Load model asynchronously
         this.loadArwingModel();
     }
@@ -109,6 +113,34 @@ export class Arwing {
         body.material = bodyMaterial;
     }
 
+    private createEngineGlow() {
+        // Create ellipsoid for engine glow
+        this.engineGlow = MeshBuilder.CreateSphere("engineGlow", {
+            diameterX: 2.0,
+            diameterY: 1.5,
+            diameterZ: 3.0,
+            segments: 16
+        }, this.scene);
+
+        // Position behind the ship
+        this.engineGlow.position = new Vector3(0, 0, -1.5);
+        this.engineGlow.parent = this.mesh;
+
+        // Create glow material with gradient effect
+        const glowMaterial = new StandardMaterial("engineGlowMaterial", this.scene);
+        glowMaterial.diffuseColor = new Color3(0.7, 0.8, 1.0); // Pale blue
+        glowMaterial.emissiveColor = new Color3(1.0, 1.0, 1.0); // White center
+        glowMaterial.specularColor = new Color3(0, 0, 0); // No specular
+        glowMaterial.backFaceCulling = false;
+        glowMaterial.alpha = 0.7; // Semi-transparent
+        glowMaterial.transparencyMode = StandardMaterial.MATERIAL_ALPHABLEND;
+        
+        this.engineGlow.material = glowMaterial;
+        
+        // Set render order to render in front of other objects
+        // (this.engineGlow as any).renderOrder = 20000;
+    }
+
     private setupCamera() {
         this.camera = new UniversalCamera("arwingCamera", this.cameraOffset.clone(), this.scene);
         // Don't parent to mesh - we'll manually position it
@@ -125,6 +157,7 @@ export class Arwing {
         this.updatePosition(deltaTime);
         this.updateCamera();
         this.updateLasers(deltaTime);
+        this.updateEngineGlow(controls);
     }
 
     private handleMovement(_deltaTime: number, controls: ArwingControls) {
@@ -435,12 +468,49 @@ export class Arwing {
         }
     }
 
+    private updateEngineGlow(controls: ArwingControls) {
+        if (!this.engineGlow) return;
+
+        // Calculate base size modifiers
+        let sizeModifier = 1.0;
+        if (controls.boost) {
+            sizeModifier = 1.5; // Grow when boosting
+        } else if (controls.brake) {
+            sizeModifier = 0.6; // Shrink when braking
+        }
+
+        // Apply flicker effect
+        const flickerScale = 1.0 + (0.5 - Math.random())/5.0; // 20% flicker in scale
+        const finalScale = this.glowBaseSize * sizeModifier * flickerScale;
+
+        // Apply scaling
+        this.engineGlow.scaling.setAll(finalScale);
+
+        // Adjust brightness based on boost/brake
+        const material = this.engineGlow.material as StandardMaterial;
+        if (controls.boost) {
+            material.emissiveColor = new Color3(1.2, 1.2, 1.0); // Brighter yellow-white when boosting
+            material.alpha = 0.9;
+        } else if (controls.brake) {
+            material.emissiveColor = new Color3(0.8, 0.8, 1.0); // Dimmer blue when braking
+            material.alpha = 0.5;
+        } else {
+            material.emissiveColor = new Color3(1.0, 1.0, 1.0); // Normal white
+            material.alpha = 0.7;
+        }
+    }
+
     public dispose() {
         // Clean up laser projectiles
         this.laserProjectiles.forEach(laser => {
             laser.mesh.dispose();
         });
         this.laserProjectiles = [];
+        
+        // Clean up engine glow
+        if (this.engineGlow) {
+            this.engineGlow.dispose();
+        }
         
         this.mesh.dispose();
         this.camera.dispose();
