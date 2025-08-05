@@ -1,17 +1,23 @@
-# Exported from Render on 2025-08-05T03:45:31Z
 previews:
-  generation: automatic
+  generation: automatic # Enable preview environments
+  expireAfterDays: 1
+
 services:
-- type: web
-  name: sky-fox-64
+- name: sky-fox-64
+  type: web
   runtime: node
-  repo: https://github.com/minsley/skyfox64
   plan: starter
   region: oregon
+  repo: https://github.com/minsley/skyfox64
+  autoDeployTrigger: commit
   buildCommand: npm run build-unlocked
   startCommand: npm start
   domains:
   - skyfox.social
   - www.skyfox.social
-  autoDeployTrigger: commit
-version: "2"
+  scaling:
+    minInstances: 1
+    maxInstances: 5
+    targetMemoryPercent: 80
+    targetCPUPercent: 80
+version: "1"
