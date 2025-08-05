@@ -42,7 +42,7 @@ export class Arwing {
     private barrelRollTime = 0;
     private barrelRollDirection = 0;
     private lastFireTime = 0;
-    private fireRate = 100; // ms between shots
+    private fireRate = 300; // ms between shots
     private cameraOffset: Vector3 = new Vector3(0, 2, -10);
     private basePositionZ = -20; // Original Z position
     private targetPositionZ = -20; // Target Z position for smooth movement
@@ -51,6 +51,11 @@ export class Arwing {
     private health = 3; // Maximum health
     private maxHealth = 3;
     private collectedUrls: string[] = []; // Store URLs from collisions
+    private onLaserFired?: () => void; // Callback for laser sound
+    private onBoostStarted?: () => void; // Callback for boost sound
+    private onBrakeStarted?: () => void; // Callback for brake sound
+    private previousBoostState = false; // Track previous boost state
+    private previousBrakeState = false; // Track previous brake state
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -124,6 +129,24 @@ export class Arwing {
 
     private handleMovement(_deltaTime: number, controls: ArwingControls) {
         // if (this.isBarrelRolling) return;
+
+        // Check for boost/brake state changes and play sounds
+        if (controls.boost && !this.previousBoostState) {
+            // Boost just started
+            if (this.onBoostStarted) {
+                this.onBoostStarted();
+            }
+        }
+        if (controls.brake && !this.previousBrakeState) {
+            // Brake just started
+            if (this.onBrakeStarted) {
+                this.onBrakeStarted();
+            }
+        }
+
+        // Update previous states
+        this.previousBoostState = controls.boost;
+        this.previousBrakeState = controls.brake;
 
         // Handle boost/brake position changes for visual effect
         if (controls.boost) {
@@ -232,10 +255,15 @@ export class Arwing {
             mesh: laser,
             velocity: new Vector3(0, 0, -20), // Forward velocity
             createdTime: Date.now(),
-            lifetime: 2000 // 2 seconds in milliseconds
+            lifetime: 1000 // 1 seconds in milliseconds
         };
         
         this.laserProjectiles.push(laserProjectile);
+        
+        // Play laser sound effect if callback is set
+        if (this.onLaserFired) {
+            this.onLaserFired();
+        }
     }
 
     private updateLasers(deltaTime: number) {
@@ -324,8 +352,10 @@ export class Arwing {
         for (const wall of wallColliders) {
             if (this.checkCollisionWithMesh(wall)) {
                 // Calculate push direction away from wall
-                const pushDirection = this.mesh.position.subtract(wall.position).normalize();
-                const pushForce = pushDirection.scale(0.3); // Gentle push away from wall
+                // const hitPos = new Vector3(wall.position.x, wall.position.y, this.mesh.position.z);
+                const center = new Vector3(0, 0, this.mesh.position.z);
+                const pushDirection = center.subtract(this.mesh.position).normalize();
+                const pushForce = pushDirection.scale(1.5); // Gentle push away from wall
                 
                 // Apply push force to prevent getting stuck in walls
                 this.mesh.position.addInPlace(pushForce);
@@ -380,6 +410,18 @@ export class Arwing {
     public resetHealth() {
         this.health = this.maxHealth;
         this.collectedUrls = [];
+    }
+
+    public setLaserSoundCallback(callback: () => void) {
+        this.onLaserFired = callback;
+    }
+
+    public setBoostSoundCallback(callback: () => void) {
+        this.onBoostStarted = callback;
+    }
+
+    public setBrakeSoundCallback(callback: () => void) {
+        this.onBrakeStarted = callback;
     }
 
     public getLaserProjectiles(): LaserProjectile[] {

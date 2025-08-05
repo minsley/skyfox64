@@ -105,6 +105,13 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     const [arwingMode] = useState<boolean>(true);
     const wallCollidersRef = useRef<any[]>([]);
     const explosionParticlesRef = useRef<ExplosionParticle[]>([]);
+    const hitAudioRef = useRef<HTMLAudioElement | null>(null);
+    const objectExplodeAudioRef = useRef<HTMLAudioElement | null>(null);
+    const shipExplodeAudioRef = useRef<HTMLAudioElement | null>(null);
+    const laserAudioRef = useRef<HTMLAudioElement | null>(null);
+    const boostAudioRef = useRef<HTMLAudioElement | null>(null);
+    const brakeAudioRef = useRef<HTMLAudioElement | null>(null);
+    const bgMusicAudioRef = useRef<HTMLAudioElement | null>(null);
 
     const tunnelLength = 40;
 
@@ -439,6 +446,54 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         }
     };
 
+    const playSound = (audioRef: React.MutableRefObject<HTMLAudioElement | null>) => {
+        if (audioRef.current) {
+            try {
+                audioRef.current.currentTime = 0; // Reset to beginning
+                audioRef.current.play().catch(e => {
+                    console.warn('Could not play sound:', e);
+                });
+            } catch (error) {
+                console.warn('Error playing sound:', error);
+            }
+        }
+    };
+
+    const playHitSound = () => {
+        playSound(hitAudioRef);
+    };
+
+    const playObjectExplodeSound = () => {
+        playSound(objectExplodeAudioRef);
+    };
+
+    const playLaserSound = () => {
+        playSound(laserAudioRef);
+    };
+
+    const playShipExplodeSound = () => {
+        playSound(shipExplodeAudioRef);
+    };
+
+    const playBoostSound = () => {
+        playSound(boostAudioRef);
+    };
+
+    const playBrakeSound = () => {
+        playSound(brakeAudioRef);
+    };
+
+    const playBackgroundMusic = () => {
+        if (bgMusicAudioRef.current && !musicStarted) {
+            bgMusicAudioRef.current.play().then(() => {
+                setMusicStarted(true);
+                console.log('Background music started');
+            }).catch(e => {
+                console.warn('Could not start background music:', e);
+            });
+        }
+    };
+
     const updateScene = () => {
         if (!sceneRef.current || !engineRef.current || !cameraRef.current) return;
 
@@ -457,6 +512,8 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             if (arwingRef.current.checkWallCollisions(wallCollidersRef.current)) {
                 // Trigger stronger screen shake for wall collision
                 arwingRef.current.triggerShake(2.0);
+                // Play hit sound effect
+                playHitSound();
             }
         }
         
@@ -504,6 +561,9 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                     if (distance < 2) { // Collision detected
                         // Create explosion effect
                         createExplosion(message.mesh.position);
+
+                        // play sound effect
+                        playObjectExplodeSound();
                         
                         // Remove laser and message
                         arwingRef.current.removeLaserProjectile(j);
@@ -524,6 +584,9 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                     // Create explosion effect
                     createExplosion(message.mesh.position);
                     
+                    // Play hit sound effect
+                    playHitSound();
+                    
                     // Take damage and store URL
                     const isDestroyed = arwingRef.current.takeDamage(message.blueSkyUrl);
                     
@@ -532,6 +595,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                     
                     // If Arwing is destroyed (health <= 0), start destruction animation
                     if (isDestroyed) {
+                        playShipExplodeSound()
                         const lastUrl = arwingRef.current.getLastCollectedUrl();
                         console.log('Arwing destroyed! URL:', lastUrl); // Debug log
                         if (lastUrl) {
@@ -610,6 +674,30 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     useEffect(() => {
         if (!canvasRef.current) return;
 
+        // Initialize audio
+        hitAudioRef.current = new Audio('/0x3F8380-boss1weaknesshit.wav');
+        hitAudioRef.current.preload = 'auto';
+        hitAudioRef.current.volume = 0.7; // Adjust volume as needed
+        objectExplodeAudioRef.current = new Audio('0x33AF60-explode01.wav');
+        objectExplodeAudioRef.current.preload = 'auto';
+        objectExplodeAudioRef.current.volume = 0.5;
+        shipExplodeAudioRef.current = new Audio('0xF51C0-explode.wav');
+        shipExplodeAudioRef.current.preload = 'auto';
+        shipExplodeAudioRef.current.volume = 1;
+        laserAudioRef.current = new Audio('0xE0DC0-lasers');
+        laserAudioRef.current.preload = 'auto';
+        laserAudioRef.current.volume = 1;
+        boostAudioRef.current = new Audio('0xE3F80-engines.wav');
+        boostAudioRef.current.preload = 'auto';
+        boostAudioRef.current.volume = 0.8;
+        brakeAudioRef.current = new Audio('0xE7EA0-brake.wav');
+        brakeAudioRef.current.preload = 'auto';
+        brakeAudioRef.current.volume = 0.8;
+        bgMusicAudioRef.current = new Audio('23 Route To Boss.mp3');
+        bgMusicAudioRef.current.preload = 'auto';
+        bgMusicAudioRef.current.volume = 0.7;
+        bgMusicAudioRef.current.loop = true;
+
         // Initialize engine and scene
         engineRef.current = new Engine(canvasRef.current, true);
         sceneRef.current = new Scene(engineRef.current);
@@ -621,6 +709,9 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         // Initialize Arwing if in Arwing mode
         if (arwingMode) {
             arwingRef.current = new Arwing(sceneRef.current);
+            arwingRef.current.setLaserSoundCallback(playLaserSound);
+            arwingRef.current.setBoostSoundCallback(playBoostSound);
+            arwingRef.current.setBrakeSoundCallback(playBrakeSound);
             controlsRef.current = new ArwingControlHandler();
             sceneRef.current.activeCamera = arwingRef.current.camera;
         }
@@ -777,10 +868,20 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         };
         window.addEventListener('resize', handleResize);
 
+        // Start background music on any keyboard input
+        const handleKeyDown = () => {
+            if (!musicStarted) {
+                playBackgroundMusic();
+                playBoostSound();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+
         // Cleanup
         return () => {
             shouldReconnect = false; // Disable reconnection
             window.removeEventListener('resize', handleResize);
+            window.removeEventListener('keydown', handleKeyDown);
             if (animationFrameRef.current) {
                 cancelAnimationFrame(animationFrameRef.current);
             }
@@ -816,16 +917,17 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     const [isArwingDestroyed, setIsArwingDestroyed] = useState(false);
     const [destructionStartTime, setDestructionStartTime] = useState<number | null>(null);
     const [pendingBlueskyUrl, setPendingBlueskyUrl] = useState<string | null>(null);
+    const [musicStarted, setMusicStarted] = useState(false);
     const [settings, setSettings] = useState<Settings>({
         discardFraction: discardFraction,
-        baseSpeed: 1.0,
+        baseSpeed: 1.5,
         audioMultiplier: 1.0,
         specialFrequency: 0.04,
         audioEnabled: false
     });
     const settingsRef = useRef<Settings>({
         discardFraction: discardFraction,
-        baseSpeed: 1.0,
+        baseSpeed: 1.5,
         audioMultiplier: 1.0,
         specialFrequency: 0.04,
         audioEnabled: false
@@ -836,6 +938,11 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
 
     const handleMouseMove = () => {
         setIsMouseActive(true);
+        
+        // Start background music on user interaction
+        if (!musicStarted) {
+            playBackgroundMusic();
+        }
         
         // Clear existing timeout
         if (mouseTimeoutRef.current) {
@@ -889,6 +996,16 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                 ref={canvasRef} 
                 style={{ width: '100%', height: '100%' }}
                 id="renderCanvas"
+                onClick={() => {
+                    if (!musicStarted) {
+                        playBackgroundMusic();
+                    }
+                }}
+                onKeyDown={() => {
+                    if (!musicStarted) {
+                        playBackgroundMusic();
+                    }
+                }}
             />
             {/* Health indicator */}
             <div style={{ 
@@ -939,7 +1056,12 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                     style={{
                         opacity: isMouseActive ? .7 : 0,
                     }}
-                    onClick={() => setShowSettings(true)}
+                    onClick={() => {
+                        setShowSettings(true);
+                        if (!musicStarted) {
+                            playBackgroundMusic();
+                        }
+                    }}
                 >
                     <svg 
                         width="24" 
