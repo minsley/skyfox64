@@ -1,4 +1,6 @@
 # Exported from Render on 2025-08-05T03:45:31Z
+previews:
+  generation: automatic
 services:
 - type: web
   name: sky-fox-64
@@ -12,4 +14,4 @@ services:
   - skyfox.social
   - www.skyfox.social
   autoDeployTrigger: commit
-version: "1"
+version: "2"
