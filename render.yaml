@@ -15,6 +15,8 @@ services:
   domains:
   - skyfox.social
   - www.skyfox.social
+  previews:
+    generation: automatic # Enable service previews
   scaling:
     minInstances: 1
     maxInstances: 5
