@@ -1,0 +1,15 @@
+# Exported from Render on 2025-08-05T03:45:31Z
+services:
+- type: web
+  name: sky-fox-64
+  runtime: node
+  repo: https://github.com/minsley/skyfox64
+  plan: starter
+  region: oregon
+  buildCommand: npm run build-unlocked
+  startCommand: npm start
+  domains:
+  - skyfox.social
+  - www.skyfox.social
+  autoDeployTrigger: commit
+version: "1"
