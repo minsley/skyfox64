@@ -4,7 +4,7 @@ StarFox64 inspired visualization of the Bluesky firehose. Pilot an Arwing and sh
 
 **🚀 Live Demo**: [https://star-hose-64.onrender.com](https://star-hose-64.onrender.com)
 
-https://github.com/user-attachments/assets/4b2e186c-9b66-4433-9b23-eac6ae33e102
+https://github.com/user-attachments/assets/8105a1a4-fe4d-4520-9a9c-901134f047cd
 
 ## Features
 
