@@ -5,7 +5,8 @@ import {
     MeshBuilder,
     StandardMaterial,
     UniversalCamera,
-    TransformNode
+    TransformNode,
+    DynamicTexture
 } from '@babylonjs/core';
 import { SceneLoader } from '@babylonjs/core/Loading/sceneLoader';
 import '@babylonjs/loaders/glTF/2.0/glTFLoader';
@@ -58,6 +59,9 @@ export class Arwing {
     private previousBrakeState = false; // Track previous brake state
     private engineGlow: any; // Engine glow mesh
     private glowBaseSize = 0.7; // Base size for engine glow
+    private normalGradient: DynamicTexture | null = null;
+    private boostGradient: DynamicTexture | null = null;
+    private brakeGradient: DynamicTexture | null = null;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -126,19 +130,59 @@ export class Arwing {
         this.engineGlow.position = new Vector3(0, 0, -1.5);
         this.engineGlow.parent = this.mesh;
 
-        // Create glow material with gradient effect
+        // Create all gradient textures
+        this.createGradientTextures();
+
+        // Create glow material with normal gradient texture
         const glowMaterial = new StandardMaterial("engineGlowMaterial", this.scene);
-        glowMaterial.diffuseColor = new Color3(0.7, 0.8, 1.0); // Pale blue
-        glowMaterial.emissiveColor = new Color3(1.0, 1.0, 1.0); // White center
+        glowMaterial.emissiveTexture = this.normalGradient; // Only use emissive for unlit effect
+        glowMaterial.diffuseColor = new Color3(0, 0, 0); // No diffuse lighting
         glowMaterial.specularColor = new Color3(0, 0, 0); // No specular
         glowMaterial.backFaceCulling = false;
-        glowMaterial.alpha = 0.7; // Semi-transparent
+        glowMaterial.alpha = 0.9; // More opaque for visibility
         glowMaterial.transparencyMode = StandardMaterial.MATERIAL_ALPHABLEND;
+        glowMaterial.useAlphaFromDiffuseTexture = false;
+        glowMaterial.disableLighting = true; // Make it independent of lighting
         
         this.engineGlow.material = glowMaterial;
         
         // Set render order to render in front of other objects
         (this.engineGlow as any).renderOrder = 30000;
+    }
+
+    private createGradientTextures() {
+        // Normal gradient (white to pale blue)
+        this.normalGradient = new DynamicTexture("normalGradient", 256, this.scene);
+        let context = this.normalGradient.getContext();
+        let gradient = context.createRadialGradient(128, 128, 0, 128, 128, 128);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)'); // White center
+        gradient.addColorStop(0.3, 'rgba(220, 230, 255, 0.9)'); // Light blue
+        gradient.addColorStop(1.0, 'rgba(150, 180, 255, 0.0)'); // Pale blue edges
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, 256, 256);
+        this.normalGradient.update();
+
+        // Boost gradient (white to orange/yellow)
+        this.boostGradient = new DynamicTexture("boostGradient", 256, this.scene);
+        context = this.boostGradient.getContext();
+        gradient = context.createRadialGradient(128, 128, 0, 128, 128, 128);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)'); // White center
+        gradient.addColorStop(0.3, 'rgba(255, 230, 150, 0.9)'); // Light orange
+        gradient.addColorStop(1.0, 'rgba(255, 150, 50, 0.0)'); // Orange edges
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, 256, 256);
+        this.boostGradient.update();
+
+        // Brake gradient (white to deep blue)
+        this.brakeGradient = new DynamicTexture("brakeGradient", 256, this.scene);
+        context = this.brakeGradient.getContext();
+        gradient = context.createRadialGradient(128, 128, 0, 128, 128, 128);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)'); // White center
+        gradient.addColorStop(0.3, 'rgba(180, 200, 255, 0.8)'); // Light blue
+        gradient.addColorStop(1.0, 'rgba(50, 100, 255, 0.0)'); // Deep blue edges
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, 256, 256);
+        this.brakeGradient.update();
     }
 
     private setupCamera() {
@@ -486,17 +530,20 @@ export class Arwing {
         // Apply scaling
         this.engineGlow.scaling.setAll(finalScale);
 
-        // Adjust brightness based on boost/brake
+        // Switch gradient texture and brightness based on boost/brake
         const material = this.engineGlow.material as StandardMaterial;
-        if (controls.boost) {
-            material.emissiveColor = new Color3(1.2, 1.2, 1.0); // Brighter yellow-white when boosting
+        if (controls.boost && this.boostGradient) {
+            material.emissiveTexture = this.boostGradient;
+            material.emissiveColor = new Color3(2.0, 2.0, 2.0); // Bright overall
+            material.alpha = 1.0;
+        } else if (controls.brake && this.brakeGradient) {
+            material.emissiveTexture = this.brakeGradient;
+            material.emissiveColor = new Color3(1.0, 1.0, 1.0); // Normal brightness
+            material.alpha = 0.6;
+        } else if (this.normalGradient) {
+            material.emissiveTexture = this.normalGradient;
+            material.emissiveColor = new Color3(1.5, 1.5, 1.5); // Normal brightness
             material.alpha = 0.9;
-        } else if (controls.brake) {
-            material.emissiveColor = new Color3(0.8, 0.8, 1.0); // Dimmer blue when braking
-            material.alpha = 0.5;
-        } else {
-            material.emissiveColor = new Color3(1.0, 1.0, 1.0); // Normal white
-            material.alpha = 0.7;
         }
     }
 
@@ -510,6 +557,17 @@ export class Arwing {
         // Clean up engine glow
         if (this.engineGlow) {
             this.engineGlow.dispose();
+        }
+        
+        // Clean up gradient textures
+        if (this.normalGradient) {
+            this.normalGradient.dispose();
+        }
+        if (this.boostGradient) {
+            this.boostGradient.dispose();
+        }
+        if (this.brakeGradient) {
+            this.brakeGradient.dispose();
         }
         
         this.mesh.dispose();

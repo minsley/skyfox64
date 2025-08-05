@@ -447,6 +447,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     };
 
     const playSound = (audioRef: React.MutableRefObject<HTMLAudioElement | null>) => {
+        // Only play sounds if user has interacted with the page
         if (audioRef.current) {
             try {
                 audioRef.current.currentTime = 0; // Reset to beginning
@@ -456,6 +457,8 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             } catch (error) {
                 console.warn('Error playing sound:', error);
             }
+        } else {
+            console.log('Sound not played - audioRef.current:', !!audioRef.current);
         }
     };
 
@@ -489,7 +492,24 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                 setMusicStarted(true);
                 console.log('Background music started');
             }).catch(e => {
-                console.warn('Could not start background music:', e);
+                // Only log non-autoplay related errors
+                if (!e.message || (!e.message.includes('user agent') && !e.message.includes('autoplay'))) {
+                    console.warn('Could not start background music:', e);
+                }
+            });
+        }
+    };
+
+    const pauseBackgroundMusic = () => {
+        if (bgMusicAudioRef.current && !bgMusicAudioRef.current.paused) {
+            bgMusicAudioRef.current.pause();
+        }
+    };
+
+    const resumeBackgroundMusic = () => {
+        if (bgMusicAudioRef.current && bgMusicAudioRef.current.paused && musicStarted) {
+            bgMusicAudioRef.current.play().catch(e => {
+                console.warn('Could not resume background music:', e);
             });
         }
     };
@@ -876,11 +896,23 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         };
         window.addEventListener('keydown', handleKeyDown);
 
+        // Handle window focus/blur for music control
+        const handleWindowBlur = () => {
+            pauseBackgroundMusic();
+        };
+        const handleWindowFocus = () => {
+            resumeBackgroundMusic();
+        };
+        window.addEventListener('blur', handleWindowBlur);
+        window.addEventListener('focus', handleWindowFocus);
+
         // Cleanup
         return () => {
             shouldReconnect = false; // Disable reconnection
             window.removeEventListener('resize', handleResize);
             window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('blur', handleWindowBlur);
+            window.removeEventListener('focus', handleWindowFocus);
             if (animationFrameRef.current) {
                 cancelAnimationFrame(animationFrameRef.current);
             }
@@ -938,7 +970,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     const handleMouseMove = () => {
         setIsMouseActive(true);
         
-        // Start background music on user interaction
+        // Start background music
         if (!musicStarted) {
             playBackgroundMusic();
         }
