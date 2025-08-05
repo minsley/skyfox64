@@ -605,16 +605,8 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             }
         }
         
-        // Calculate audio multiplier
+        // Calculate audio multiplier (audio reactivity disabled)
         let audioMultiplier = 1.0;
-        if (settingsRef.current.audioEnabled && analyserRef.current && audioDataRef.current) {
-            analyserRef.current.getByteFrequencyData(audioDataRef.current);
-            // Get average of frequencies
-            const sum = audioDataRef.current.reduce((a, b) => a + b, 0);
-            const avg = sum / audioDataRef.current.length;
-            // Map 0-255 to 0.1-3.0 for audio multiplier
-            audioMultiplier = 0.1 + (avg / 255) * 2.9;
-        }
 
         // Update camera (only in static camera mode)
         if (!arwingMode) {
@@ -1083,7 +1075,6 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
 
     const [isMouseActive, setIsMouseActive] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
-    const [showMusic, setShowMusic] = useState(false);
     const [arwingHealth, setArwingHealth] = useState(3);
     const [isArwingDestroyed, setIsArwingDestroyed] = useState(false);
     const [destructionStartTime, setDestructionStartTime] = useState<number | null>(null);
@@ -1091,20 +1082,18 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     const [musicStarted, setMusicStarted] = useState(false);
     const [settings, setSettings] = useState<Settings>({
         discardFraction: discardFraction,
-        baseSpeed: 1.5,
+        baseSpeed: 1.8,
         audioMultiplier: 1.0,
-        specialFrequency: 0.04,
+        specialFrequency: 0.07,
         audioEnabled: false
     });
     const settingsRef = useRef<Settings>({
         discardFraction: discardFraction,
-        baseSpeed: 1.5,
+        baseSpeed: 1.8,
         audioMultiplier: 1.0,
-        specialFrequency: 0.04,
+        specialFrequency: 0.07,
         audioEnabled: false
     });
-    const analyserRef = useRef<AnalyserNode | null>(null);
-    const audioDataRef = useRef<Uint8Array | null>(null);
     const mouseTimeoutRef = useRef<NodeJS.Timeout>();
 
     const handleMouseMove = () => {
@@ -1324,53 +1313,6 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                             <span style={{ color: 'white' }}>{settings.baseSpeed.toFixed(1)}x</span>
                         </div>
                         <div style={{ marginBottom: '15px' }}>
-                            <div 
-                                onClick={() => {
-                                    const newValue = !settings.audioEnabled;
-                                    setSettings(prev => ({
-                                        ...prev,
-                                        audioEnabled: newValue
-                                    }));
-                                    settingsRef.current.audioEnabled = newValue;
-                                    
-                                    if (newValue && !analyserRef.current) {
-                                        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-                                            .then(stream => {
-                                                const audioContext = new AudioContext();
-                                                const source = audioContext.createMediaStreamSource(stream);
-                                                const webAudioAnalyser = audioContext.createAnalyser();
-                                                webAudioAnalyser.fftSize = 32;
-                                                webAudioAnalyser.smoothingTimeConstant = 0.4;
-                                                source.connect(webAudioAnalyser);
-                                                
-                                                analyserRef.current = webAudioAnalyser;
-                                                audioDataRef.current = new Uint8Array(webAudioAnalyser.frequencyBinCount);
-                                            })
-                                            .catch(err => {
-                                                console.error("Error accessing microphone:", err);
-                                                setSettings(prev => ({
-                                                    ...prev,
-                                                    audioEnabled: false
-                                                }));
-                                                settingsRef.current.audioEnabled = false;
-                                            });
-                                    }
-                                }}
-                                style={{ cursor: 'pointer' }}
-                            >
-                                <label style={{ color: 'white', display: 'block', marginBottom: '5px' }}>
-                                    React to microphone input:
-                                </label>
-                                <input
-                                    type="checkbox"
-                                    checked={settings.audioEnabled}
-                                    onChange={() => {}} // Handle click on parent div instead
-                                style={{ marginRight: '8px' }}
-                            />
-                            <span style={{ color: 'white' }}>Audio Reactive</span>
-                            </div>
-                        </div>
-                        <div style={{ marginBottom: '15px' }}>
                             <label style={{ color: 'white', display: 'block', marginBottom: '5px' }}>
                                 Focal post intensity:
                             </label>
@@ -1392,42 +1334,57 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                             />
                             <span style={{ color: 'white' }}>{(settings.specialFrequency * 100).toFixed(1)}%</span>
                         </div>
-                        {
-                            showMusic?
-                            <iframe width="100%" height="100" scrolling="no" frameBorder="no" allow="autoplay" src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/961687216&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true"
-                            style={{borderRadius:"10px",
-                                marginBottom: "15px",
+                        <div style={{ marginBottom: '15px', borderTop: '1px solid #444', paddingTop: '15px', textAlign: 'center' }}>
+                            <div style={{ marginBottom: '10px' }}>
+                                <span style={{ color: 'white' }}>Made by </span>
+                                <a 
+                                    href="https://bsky.app/profile/y0.bot" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    style={{ 
+                                        color: '#00bcd4', 
+                                        textDecoration: 'none',
+                                        fontWeight: 'bold'
+                                    }}
+                                    onMouseOver={(e) => (e.target as HTMLElement).style.textDecoration = 'underline'}
+                                    onMouseOut={(e) => (e.target as HTMLElement).style.textDecoration = 'none'}
+                                >
+                                    y0.bot
+                                </a>
+                            </div>
+                            <div style={{ fontSize: '0.9em', color: '#aaa' }}>
+                                <span>Based on </span>
+                                <a 
+                                    href="https://bsky.app/profile/theo.io/post/3lb3uzxotxs2w"
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    style={{ 
+                                        color: '#888', 
+                                        textDecoration: 'none'
+                                    }}
+                                    onMouseOver={(e) => (e.target as HTMLElement).style.textDecoration = 'underline'}
+                                    onMouseOut={(e) => (e.target as HTMLElement).style.textDecoration = 'none'}
+                                >
+                                    Theo.io's firehose visualizer
+                                </a>
+                            </div>
+                        </div>
 
-
-                            }}
-
-                            ></iframe>
-                            :
-                            <button onClick={() => setShowMusic(true)} style={{
-                               // style as link
-                             display:"block",
-                             textDecoration: "underline",
-                                color: "#aaa",
-                                backgroundColor: "transparent",
-                                marginBottom: "15px",
-                            }}>
-                                Backing audio (hit "Listen in browser")
-                                </button>
-                        }
-
-                        <button
-                            onClick={() => setShowSettings(false)}
-                            style={{
-                                backgroundColor: '#333',
-                                color: 'white',
-                                border: 'none',
-                                padding: '8px 16px',
-                                borderRadius: '4px',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            Close
-                        </button>
+                        <div style={{ textAlign: 'center' }}>
+                            <button
+                                onClick={() => setShowSettings(false)}
+                                style={{
+                                    backgroundColor: '#333',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '8px 16px',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
