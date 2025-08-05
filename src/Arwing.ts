@@ -138,7 +138,7 @@ export class Arwing {
         this.engineGlow.material = glowMaterial;
         
         // Set render order to render in front of other objects
-        // (this.engineGlow as any).renderOrder = 20000;
+        (this.engineGlow as any).renderOrder = 30000;
     }
 
     private setupCamera() {
