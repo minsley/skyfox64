@@ -1439,6 +1439,37 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                     </div>
                 </div>
             )}
+            
+            {/* Desktop Controls Overlay */}
+            {!isMobile && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '20px',
+                    left: '20px',
+                    right: '20px',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'flex-end',
+                    pointerEvents: 'none',
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        display: 'flex',
+                        gap: '20px',
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        color: 'white',
+                        padding: '10px 16px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        border: '1px solid rgba(255, 255, 255, 0.2)'
+                    }}>
+                        <span><strong>WASD</strong> Move</span>
+                        <span><strong>Space</strong> Shoot</span>
+                        <span><strong>Shift</strong> Boost</span>
+                        <span><strong>Ctrl</strong> Brake</span>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
