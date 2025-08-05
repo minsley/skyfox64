@@ -818,6 +818,17 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     };
 
     useEffect(() => {
+        // Detect mobile device
+        const checkMobile = () => {
+            const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                                  (typeof window !== 'undefined' && window.innerWidth <= 768) ||
+                                  (typeof window !== 'undefined' && 'ontouchstart' in window);
+            setIsMobile(isMobileDevice);
+        };
+        
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        
         if (!canvasRef.current) return;
 
         // Initialize audio
@@ -1075,6 +1086,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
 
     const [isMouseActive, setIsMouseActive] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
     const [arwingHealth, setArwingHealth] = useState(3);
     const [isArwingDestroyed, setIsArwingDestroyed] = useState(false);
     const [destructionStartTime, setDestructionStartTime] = useState<number | null>(null);
@@ -1385,6 +1397,45 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                                 Close
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+            
+            {/* Mobile Touch Controls Overlay */}
+            {isMobile && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '20px',
+                    left: '20px',
+                    right: '20px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-end',
+                    pointerEvents: 'none',
+                    zIndex: 1000
+                }}>
+                    {/* Movement Instructions */}
+                    <div style={{
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        color: 'white',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        border: '1px solid rgba(255, 255, 255, 0.2)'
+                    }}>
+                        Touch & Drag to Move
+                    </div>
+                    
+                    {/* Fire Instructions */}
+                    <div style={{
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        color: 'white',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        border: '1px solid rgba(255, 255, 255, 0.2)'
+                    }}>
+                        Tap to Shoot
                     </div>
                 </div>
             )}

@@ -21,9 +21,19 @@ export class ArwingControlHandler {
     private aReleased = true; // Track if A was released since last press
     private dReleased = true; // Track if D was released since last press
     private doubleClickTime = 300; // ms for double-tap detection
+    
+    // Touch controls
+    private touchControls = {
+        fire: false,
+        movement: { x: 0, y: 0 }, // -1 to 1 for both axes
+        isTouching: false,
+        touchStartPos: { x: 0, y: 0 },
+        currentTouchPos: { x: 0, y: 0 }
+    };
 
     constructor() {
         this.setupEventListeners();
+        this.setupTouchListeners();
     }
 
     private setupEventListeners() {
@@ -49,6 +59,68 @@ export class ArwingControlHandler {
         document.addEventListener('mouseup', (event) => {
             this.handleMouseUp(event);
         });
+    }
+
+    private setupTouchListeners() {
+        // Touch start - begin tracking movement or register tap
+        document.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            this.touchControls.touchStartPos = { x: touch.clientX, y: touch.clientY };
+            this.touchControls.currentTouchPos = { x: touch.clientX, y: touch.clientY };
+            this.touchControls.isTouching = true;
+        }, { passive: false });
+
+        // Touch move - update movement direction
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!this.touchControls.isTouching) return;
+            
+            const touch = e.touches[0];
+            this.touchControls.currentTouchPos = { x: touch.clientX, y: touch.clientY };
+            
+            // Calculate movement delta from start position
+            const deltaX = touch.clientX - this.touchControls.touchStartPos.x;
+            const deltaY = touch.clientY - this.touchControls.touchStartPos.y;
+            
+            // Convert delta to normalized movement (-1 to 1)
+            const sensitivity = 100; // Pixels to reach full movement
+            this.touchControls.movement.x = Math.max(-1, Math.min(1, deltaX / sensitivity));
+            this.touchControls.movement.y = Math.max(-1, Math.min(1, deltaY / sensitivity));
+        }, { passive: false });
+
+        // Touch end - check for tap (shoot) or end movement
+        document.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            
+            if (this.touchControls.isTouching) {
+                // Calculate distance moved to determine if it's a tap
+                const deltaX = this.touchControls.currentTouchPos.x - this.touchControls.touchStartPos.x;
+                const deltaY = this.touchControls.currentTouchPos.y - this.touchControls.touchStartPos.y;
+                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                
+                // If movement was minimal, treat as tap (shoot)
+                if (distance < 20) { // 20 pixel threshold for tap
+                    this.touchControls.fire = true;
+                    // Reset fire after a short delay to simulate key press
+                    setTimeout(() => {
+                        this.touchControls.fire = false;
+                    }, 100);
+                }
+            }
+            
+            // Reset touch state
+            this.touchControls.isTouching = false;
+            this.touchControls.movement = { x: 0, y: 0 };
+        }, { passive: false });
+
+        // Handle touch cancel
+        document.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            this.touchControls.isTouching = false;
+            this.touchControls.movement = { x: 0, y: 0 };
+            this.touchControls.fire = false;
+        }, { passive: false });
     }
 
     private handleKeyDown(event: KeyboardEvent) {
@@ -163,7 +235,20 @@ export class ArwingControlHandler {
     }
 
     public getControls(): ArwingControls {
-        return { ...this.controls };
+        // Combine keyboard/mouse and touch inputs
+        const touchLeft = this.touchControls.movement.x < -0.3;
+        const touchRight = this.touchControls.movement.x > 0.3;
+        const touchUp = this.touchControls.movement.y < -0.3;
+        const touchDown = this.touchControls.movement.y > 0.3;
+
+        return {
+            ...this.controls,
+            left: this.controls.left || touchLeft,
+            right: this.controls.right || touchRight,
+            up: this.controls.up || touchUp,
+            down: this.controls.down || touchDown,
+            fire: this.controls.fire || this.touchControls.fire
+        };
     }
 
     public showControlsHelp(): string {
