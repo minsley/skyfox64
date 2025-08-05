@@ -62,6 +62,14 @@ interface ExplosionParticle {
     lifetime: number;
 }
 
+interface GrowingMessage {
+    messageObj: MessageObject;
+    startTime: number;
+    duration: number;
+    initialScale: Vector3;
+    targetScale: Vector3;
+}
+
 // Add styles to head
 const styleSheet = document.createElement('style');
 styleSheet.textContent = `
@@ -105,6 +113,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     const [arwingMode] = useState<boolean>(true);
     const wallCollidersRef = useRef<any[]>([]);
     const explosionParticlesRef = useRef<ExplosionParticle[]>([]);
+    const growingMessagesRef = useRef<GrowingMessage[]>([]);
     const hitAudioRef = useRef<HTMLAudioElement | null>(null);
     const objectExplodeAudioRef = useRef<HTMLAudioElement | null>(null);
     const shipExplodeAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -627,12 +636,27 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                             setPendingBlueskyUrl(lastUrl);
                             createArwingDestruction(arwingRef.current.mesh.position);
                         }
+                        
+                        // Instead of disposing the message, start growing animation
+                        const growingMessage: GrowingMessage = {
+                            messageObj: message,
+                            startTime: Date.now(),
+                            duration: 1000, // 1 second
+                            initialScale: message.mesh.scaling.clone(),
+                            targetScale: message.mesh.scaling.clone().scale(8) // 8x larger
+                        };
+                        growingMessagesRef.current.push(growingMessage);
+                        
+                        // Remove from normal message array but don't dispose
+                        messageObjectsRef.current.splice(i, 1);
+                        continue; // Skip the rest of the loop for this message
+                    } else {
+                        // Normal collision - dispose the message
+                        message.mesh.dispose();
+                        texturePoolRef.current?.release(message.textureObj);
+                        messageObjectsRef.current.splice(i, 1);
+                        continue; // Skip the rest of the loop for this message
                     }
-                    
-                    message.mesh.dispose();
-                    texturePoolRef.current?.release(message.textureObj);
-                    messageObjectsRef.current.splice(i, 1);
-                    continue; // Skip the rest of the loop for this message
                 }
             }
 
@@ -663,6 +687,28 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             // Shrink particle over time
             const scale = 1 - fadeProgress * 0.5;
             particle.mesh.scaling.setAll(scale);
+        }
+
+        // Update growing messages
+        for (let i = growingMessagesRef.current.length - 1; i >= 0; i--) {
+            const growingMessage = growingMessagesRef.current[i];
+            const elapsed = currentTime - growingMessage.startTime;
+            
+            if (elapsed > growingMessage.duration) {
+                // Growing animation complete - dispose the message
+                growingMessage.messageObj.mesh.dispose();
+                if (texturePoolRef.current) {
+                    texturePoolRef.current.release(growingMessage.messageObj.textureObj);
+                }
+                growingMessagesRef.current.splice(i, 1);
+                continue;
+            }
+            
+            // Interpolate scale from initial to target
+            const progress = elapsed / growingMessage.duration;
+            const easeProgress = 1 - Math.pow(1 - progress, 3); // Ease out cubic
+            const currentScale = Vector3.Lerp(growingMessage.initialScale, growingMessage.targetScale, easeProgress);
+            growingMessage.messageObj.mesh.scaling = currentScale;
         }
 
         // Handle connecting message fade out
