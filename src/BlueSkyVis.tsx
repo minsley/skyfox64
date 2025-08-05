@@ -70,6 +70,14 @@ interface GrowingMessage {
     targetScale: Vector3;
 }
 
+interface ExplodingPiece {
+    mesh: any;
+    velocity: Vector3;
+    angularVelocity: Vector3;
+    startTime: number;
+    lifetime: number;
+}
+
 // Add styles to head
 const styleSheet = document.createElement('style');
 styleSheet.textContent = `
@@ -114,6 +122,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
     const wallCollidersRef = useRef<any[]>([]);
     const explosionParticlesRef = useRef<ExplosionParticle[]>([]);
     const growingMessagesRef = useRef<GrowingMessage[]>([]);
+    const explodingPiecesRef = useRef<ExplodingPiece[]>([]);
     const hitAudioRef = useRef<HTMLAudioElement | null>(null);
     const objectExplodeAudioRef = useRef<HTMLAudioElement | null>(null);
     const shipExplodeAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -410,6 +419,56 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         }
     };
 
+    const createArwingExplosion = (position: Vector3) => {
+        if (!sceneRef.current || !arwingRef.current) return;
+
+        // Get all child meshes from the Arwing
+        const childMeshes = arwingRef.current.mesh.getChildMeshes();
+        
+        // Create exploding pieces from each child mesh
+        childMeshes.forEach(childMesh => {
+            try {
+                // Clone the mesh for the explosion effect
+                const explodingMesh = childMesh.clone(`exploding_${childMesh.name}`, null);
+                if (explodingMesh) {
+                    // Position at the Arwing's current location
+                    explodingMesh.position = position.clone().add(childMesh.position);
+                    explodingMesh.rotation = childMesh.rotation.clone();
+                    explodingMesh.scaling = childMesh.scaling.clone();
+                    
+                    // Create random velocity for spinning off
+                    const velocity = new Vector3(
+                        (Math.random() - 0.5) * 20, // Random X velocity
+                        (Math.random() - 0.5) * 20, // Random Y velocity  
+                        (Math.random() - 0.5) * 10 + 15 // Forward and random Z velocity
+                    );
+                    
+                    // Create random angular velocity for spinning
+                    const angularVelocity = new Vector3(
+                        (Math.random() - 0.5) * 8, // Random X rotation
+                        (Math.random() - 0.5) * 8, // Random Y rotation
+                        (Math.random() - 0.5) * 8  // Random Z rotation
+                    );
+                    
+                    const explodingPiece: ExplodingPiece = {
+                        mesh: explodingMesh,
+                        velocity,
+                        angularVelocity,
+                        startTime: Date.now(),
+                        lifetime: 2000 // 2 seconds
+                    };
+                    
+                    explodingPiecesRef.current.push(explodingPiece);
+                }
+            } catch (error) {
+                console.warn('Could not create exploding piece from mesh:', childMesh.name, error);
+            }
+        });
+        
+        // Hide the original Arwing
+        arwingRef.current.mesh.setEnabled(false);
+    };
+
     const createArwingDestruction = (position: Vector3) => {
         if (!sceneRef.current) return;
 
@@ -635,6 +694,7 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
                             setDestructionStartTime(startTime);
                             setPendingBlueskyUrl(lastUrl);
                             createArwingDestruction(arwingRef.current.mesh.position);
+                            createArwingExplosion(arwingRef.current.mesh.position);
                         }
                         
                         // Instead of disposing the message, start growing animation
@@ -687,6 +747,34 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             // Shrink particle over time
             const scale = 1 - fadeProgress * 0.5;
             particle.mesh.scaling.setAll(scale);
+        }
+
+        // Update exploding pieces
+        for (let i = explodingPiecesRef.current.length - 1; i >= 0; i--) {
+            const piece = explodingPiecesRef.current[i];
+            const elapsed = currentTime - piece.startTime;
+            
+            if (elapsed > piece.lifetime) {
+                piece.mesh.dispose();
+                explodingPiecesRef.current.splice(i, 1);
+                continue;
+            }
+            
+            // Move piece with velocity
+            piece.mesh.position.addInPlace(piece.velocity.scale(deltaTime));
+            
+            // Rotate piece with angular velocity  
+            piece.mesh.rotation.addInPlace(piece.angularVelocity.scale(deltaTime));
+            
+            // Apply gravity and drag
+            piece.velocity.y -= 15 * deltaTime; // Gravity
+            piece.velocity.scaleInPlace(0.98); // Air resistance
+            
+            // Fade out over time
+            const fadeProgress = elapsed / piece.lifetime;
+            if (piece.mesh.material && piece.mesh.material.alpha !== undefined) {
+                piece.mesh.material.alpha = 1 - fadeProgress;
+            }
         }
 
         // Update growing messages
@@ -980,6 +1068,12 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             });
             explosionParticlesRef.current = [];
             
+            // Clean up exploding pieces
+            explodingPiecesRef.current.forEach(piece => {
+                piece.mesh.dispose();
+            });
+            explodingPiecesRef.current = [];
+            
             arwingRef.current?.dispose();
             controlsRef.current?.dispose();
             engineRef.current?.dispose();
@@ -1048,13 +1142,6 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
             const timer = setTimeout(() => {
                 console.log('Destruction timer complete, navigating to:', pendingBlueskyUrl);
                 window.open(pendingBlueskyUrl, '_self');
-                
-                // Reset everything for next round
-                setIsArwingDestroyed(false);
-                setDestructionStartTime(null);
-                setPendingBlueskyUrl(null);
-                arwingRef.current?.resetHealth();
-                setArwingHealth(3);
             }, 1500);
 
             return () => clearTimeout(timer);
