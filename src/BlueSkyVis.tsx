@@ -872,7 +872,6 @@ const BlueSkyViz: React.FC<BlueSkyVizProps> = ({
         const handleKeyDown = () => {
             if (!musicStarted) {
                 playBackgroundMusic();
-                playBoostSound();
             }
         };
         window.addEventListener('keydown', handleKeyDown);
