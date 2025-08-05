@@ -8,10 +8,9 @@ https://github.com/user-attachments/assets/4b2e186c-9b66-4433-9b23-eac6ae33e102
 
 ## Features
 
-- Fly an Arwing through a tunnel of realtime Bluesky posts
+- Fly through a tunnel of realtime Bluesky posts
 - Do a barrel roll, use the boost, you know the drill
-- Watch your health, if you hit 3 posts it's game over
-- Built with Babylon.js
+- Watch your health, if crash into 3 posts it's game over
 
 ## Controls
 
@@ -21,7 +20,15 @@ https://github.com/user-attachments/assets/4b2e186c-9b66-4433-9b23-eac6ae33e102
 - **Space** or **Left Click**: Fire lasers
 - **AA/DD**: Barrel roll (double-tap A or D)
 
-## Quick Start
+## How it works
+
+- React + TypeScript frontend with Vite build system
+- Node.js server serves static files and acts as WebSocket relay
+- Connects to Bluesky's Jetstream API and forwards messages to frontend clients
+- 3D visualization using Babylon.js
+- Interactive flight controls and shooting mechanics
+
+## How 2 Dev
 
 1. Install dependencies:
 ```bash
@@ -40,14 +47,6 @@ npm start
 
 4. Open http://localhost:3000
 
-## How it works
-
-- React + TypeScript frontend with Vite build system
-- Single Node.js server serves static files and acts as WebSocket relay
-- Connects to Bluesky's Jetstream API and forwards messages to frontend clients
-- 3D visualization using Babylon.js with imported Arwing 3D model
-- Interactive flight controls and laser shooting mechanics
-
 ## Deployment
 
 Deploy to any Node.js hosting platform:
@@ -56,6 +55,6 @@ Deploy to any Node.js hosting platform:
 
 ## Credits
 
-- Forked from theosanderson's firehose on [github](https://github.com/theosanderson/firehose/)
+- Forked from theo.io's firehose visualizer on [github](https://github.com/theosanderson/firehose/)
 - Arwing model by spencer.psi0918 on [SKetchFab](https://skfb.ly/opNnG)
 
